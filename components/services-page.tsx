@@ -7,6 +7,7 @@ import { serviceFaqs, servicePages, type ServicePageData } from "@/lib/services"
 import type { SiteContent } from "@/lib/site-data";
 import { Eyebrow } from "@/components/site-shell";
 import RichContent from "@/components/rich-content";
+import ServicePricing from "@/components/service-pricing";
 
 export default function ServicesPage() {
   const [cmsServices, setCmsServices] = useState<SiteContent[]>([]);
@@ -97,26 +98,7 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      <section className="content-wrap services-section services-fees">
-        <div className="section-heading">
-          <div><Eyebrow>Fees &amp; next steps</Eyebrow><h2>Know the cost before<br />the work begins.</h2></div>
-          <p>Start with a short conversation. Paid support begins after you agree the work and fee.</p>
-        </div>
-        <div className="services-fee-grid">
-          <article>
-            <Eyebrow>First conversation</Eyebrow><h3>Free 15-minute consultation</h3><strong>No consultation fee</strong>
-            <p>Explain your goal, ask about the support available and decide on a suitable next step.</p>
-            <ul><li>Discuss your situation and deadline</li><li>Clarify the service you may need</li><li>A full document review is arranged separately</li></ul>
-            <Link className="button button-dark" href="/consultation?mode=call">Arrange a free call</Link>
-          </article>
-          <article>
-            <Eyebrow>Document &amp; application support</Eyebrow><h3>Get a quote for the support you need</h3><strong>Fee agreed before work starts</strong>
-            <p>CVs, LinkedIn, interviews, admissions and MBA applications have different requirements.</p>
-            <ul><li>Confirm the documents and deliverables</li><li>Agree review rounds and delivery date</li><li>Receive and accept the fee before paid work begins</li></ul>
-            <Link className="button button-outline" href="/consultation">Ask for a quote</Link>
-          </article>
-        </div>
-      </section>
+      <ServicePricing />
 
       <section className="content-wrap services-section services-answers">
         <div className="services-answers-intro">

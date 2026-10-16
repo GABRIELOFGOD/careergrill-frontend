@@ -41,4 +41,11 @@ npm run lint
 npm run build
 ```
 
-For production, set `NEXT_PUBLIC_API_URL` to the HTTPS API origin at build time and deploy the frontend with the same origin configured as the backend's `FRONTEND_URL`. Prefer frontend and API hostnames on the same site (for example, `www.example.com` and `api.example.com`) so browsers reliably send the secure session cookie.
+For separate Vercel and Render deployments, use the frontend's same-origin API proxy so browsers keep the secure session cookie on the Vercel site:
+
+1. In Vercel, set `NEXT_PUBLIC_API_URL=/` and `API_PROXY_TARGET` to the Render API origin (for example, `https://your-api.onrender.com`, without `/api`).
+2. In Render, set `FRONTEND_URL` to the exact deployed frontend origin, including `https://` and any `www` prefix.
+3. If Google sign-in is enabled, set the backend's `GOOGLE_CALLBACK_URL` to `https://your-frontend-domain/api/auth/google/callback` and add that exact URL as an authorized redirect URI in Google Cloud.
+4. Redeploy both services after changing these environment variables.
+
+The proxy forwards `/api/*` requests from the browser to Render, so authentication cookies are set and sent on the Vercel origin rather than as third-party cookies. For direct API access instead, set `NEXT_PUBLIC_API_URL` to the HTTPS API origin; the frontend origin must still exactly match the backend's `FRONTEND_URL`, and cross-site cookie blocking may prevent sessions from persisting.
