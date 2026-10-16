@@ -6,6 +6,7 @@ import { ApiError, apiRequest } from "@/lib/api";
 import { sampleContent, type SiteContent } from "@/lib/site-data";
 import { Eyebrow } from "@/components/site-shell";
 import ScholarshipDetailView from "./scholarship-detail-view";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function ScholarshipDetailPage({ slug }: { slug: string }) {
   const [item, setItem] = useState<SiteContent | null>(() =>
@@ -50,18 +51,18 @@ export default function ScholarshipDetailPage({ slug }: { slug: string }) {
   }
 
   if (!item) {
-    return <section className="simple-page content-wrap">
+    return <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 py-12">
       {loading ? <p>Loading scholarship details…</p> : <>
         <Eyebrow>Careergrill / Scholarships</Eyebrow>
         <h1>{error ? "Scholarship unavailable." : "Scholarship not found."}</h1>
         <p>{error || "This listing may have moved or is no longer published."}</p>
-        <Link className="button button-dark" href="/scholarships">Back to scholarship results</Link>
+        <Link className={buttonVariants({ variant: "brand" })} href="/scholarships">Back to scholarship results</Link>
       </>}
     </section>;
   }
 
   return <>
-    {notice && <p className="content-wrap inline-notice scholarship-detail-notice" role="status">{notice} {signInRequired && <Link href="/signin">Sign in ↗</Link>}</p>}
+    {notice && <p className="mx-auto w-full max-w-7xl px-4 sm:px-8 my-4 rounded border border-brand-line bg-brand-blue p-3 text-sm" role="status">{notice} {signInRequired && <Link className="font-semibold text-brand-purple" href="/signin">Sign in ↗</Link>}</p>}
     <ScholarshipDetailView item={item} onSave={() => void saveScholarship()} />
   </>;
 }

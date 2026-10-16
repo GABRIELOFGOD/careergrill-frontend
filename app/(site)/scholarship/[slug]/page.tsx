@@ -7,5 +7,5 @@ async function ScholarshipContent({ params }: { params: Promise<{ slug: string }
 }
 
 export default function ScholarshipPage({ params }: { params: Promise<{ slug: string }> }) {
-  return <Suspense fallback={<div className="scholarship-detail-page">Loading scholarship…</div>}><ScholarshipContent params={params} /></Suspense>;
+  return <Suspense fallback={<div className="py-8">Loading scholarship…</div>}><ScholarshipContent params={params} /></Suspense>;
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { Eyebrow } from "@/components/site-shell";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 type Category = "career" | "admissions" | "scholarships" | "mba";
 
@@ -118,7 +118,7 @@ const money = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
 const pricingPanelClassName = "mb-3 flex min-h-20 items-center gap-5 rounded-md border border-brand-sage bg-brand-blue p-3.5 max-md:flex-col max-md:items-stretch";
 const pricingLabelClassName = "grid min-w-60 gap-2 text-sm font-bold text-brand-ink";
 const pricingFieldClassName = "min-h-10 w-full max-w-64 rounded border border-brand-sage bg-white px-2.5 py-1.5 text-base text-brand-ink max-md:max-w-none";
-const pricingCardsClassName = "grid grid-cols-1 gap-3 md:grid-cols-2 min-[1051px]:grid-cols-3";
+const pricingCardsClassName = "grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3";
 const pricingFactsClassName = "my-3 grid gap-4 border-y border-brand-line py-3 md:grid-cols-3 [&>p]:mb-0 [&>p]:text-sm [&>p]:leading-relaxed [&>p]:text-brand-muted [&>p>strong]:text-brand-ink";
 
 function enquiryHref(rate: string, service: Category, offer: number, extra: Record<string, string> = {}) {
@@ -149,7 +149,7 @@ function PackageCard({
   featured?: boolean;
 }) {
   return (
-    <article className={`flex min-w-0 min-h-[18.75rem] flex-col rounded-md border p-4 ${featured ? "border-brand-orange bg-[#fffaf2]" : "border-brand-sage bg-white"}`}>
+    <article className={`flex min-w-0 min-h-75 flex-col rounded-lg border gap-3 p-6 ${featured ? "border-brand-orange-dark bg-brand-footer" : "border-brand-purple/30 bg-white"}`}>
       <p className="mb-3.5 min-h-4 text-sm font-bold leading-snug text-brand-eyebrow">{kicker}</p>
       <h3 className="mb-3.5 min-h-7 font-display text-xl font-bold tracking-tight">{title}</h3>
       <p className="mb-0 font-display text-3xl font-extrabold leading-tight tracking-tight">{price === null ? "Custom quote" : money(price)}</p>
@@ -158,8 +158,8 @@ function PackageCard({
       {saving && <p className="mb-3 rounded bg-amber-50 px-2 py-2 text-sm text-amber-950">{saving}</p>}
       {description && <p className="mb-2.5 min-h-8 text-sm leading-relaxed text-brand-muted">{description}</p>}
       <ul className="mb-3.5 mt-2 list-disc pl-4 text-sm leading-relaxed text-brand-ink [&>li+li]:mt-1.5">{inclusions.map((item) => <li key={item}>{item}</li>)}</ul>
-      <Link className={`${buttonVariants({ variant: "outline", size: "sm" })} mt-auto w-full whitespace-normal text-center`} href={enquiryHref(rate, service, offer, extra)}>
-        {price === null ? "Request a quote" : `Enquire about ${title}`}
+      <Link href={enquiryHref(rate, service, offer, extra)}>
+        <Button variant={"outline"} className="w-full">{price === null ? "Request a quote" : `Enquire about ${title}`}</Button>
       </Link>
     </article>
   );
@@ -229,9 +229,9 @@ export default function ServicePricing() {
   ];
 
   return (
-    <section className="content-wrap scroll-mt-6 border-t border-brand-line py-7 pb-12" id="service-pricing" aria-labelledby="service-pricing-title">
+    <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 scroll-mt-6 border-t border-brand-line py-7 pb-12 flex flex-col gap-5" id="service-pricing" aria-labelledby="service-pricing-title">
       <header className="mb-5 grid items-end gap-6 md:grid-cols-[minmax(0,1fr)_minmax(15.625rem,.55fr)]">
-        <div><Eyebrow className="mb-3 text-brand-eyebrow">Pricing</Eyebrow><h2 className="mb-0 text-4xl leading-tight" id="service-pricing-title">Know what’s included.<br />Choose your support.</h2></div>
+        <div><Eyebrow className="mb-3 text-brand-eyebrow">Pricing</Eyebrow><h2 className="mb-0 text-5xl" id="service-pricing-title">Know what’s included.<br />Choose your support.</h2></div>
         <p className="mb-1 max-w-sm text-sm text-brand-muted">All prices are in Nigerian Naira. Choose a service to see its fees, inclusions and terms.</p>
       </header>
 
@@ -239,7 +239,7 @@ export default function ServicePricing() {
         {categories.map((item) => (
           <button
             key={item.id}
-            className="min-h-10 rounded px-2.5 py-2 text-sm font-bold text-brand-purple transition-colors hover:bg-white/70 aria-pressed:border aria-pressed:border-brand-line aria-pressed:bg-white aria-pressed:ring-2 aria-pressed:ring-brand-orange"
+            className="min-h-10 rounded px-2.5 py-2 text-sm font-bold text-brand-purple transition-colors hover:bg-white/70 aria-pressed:bg-white"
             type="button"
             aria-pressed={category === item.id}
             onClick={() => setCategory(item.id)}
@@ -373,8 +373,10 @@ export default function ServicePricing() {
       <aside className="mt-4 flex items-center justify-between gap-5 rounded-md bg-brand-sage p-4 max-md:flex-col max-md:items-start">
         <div><h3 className="mb-1.5 font-display text-xl font-bold">Not sure which option fits?</h3><p className="mb-0 max-w-xl text-sm text-brand-muted">The initial 15-minute discovery call is free. We’ll confirm your package, timeline and what to send before you pay.</p></div>
         <div className="flex shrink-0 flex-wrap items-center gap-3.5">
-          <Link className={buttonVariants({ variant: "brand", size: "sm" })} href="/consultation?mode=call">Book a free 15-minute call</Link>
-          <Link className="text-sm font-semibold text-brand-purple hover:underline" href="/consultation">Ask about a custom package</Link>
+          <Link href="/consultation?mode=call">
+            <Button variant="brand">Book a free 15-minute call</Button>
+          </Link>
+          <Link className="text-base text-brand-purple font-bold underline" href="/consultation">Ask about a custom package</Link>
         </div>
       </aside>
     </section>

@@ -36,16 +36,19 @@ export default function ContentPreview({ type, title, excerpt, body, category, d
     .map(([key, label]) => [label, data[key]] as const)
     .filter((field): field is readonly [string, string] => Boolean(field[1]?.trim()));
 
-  return <div className={`content-reader-preview content-reader-preview-${type}`}>
-    <div className="content-preview-browser"><span /><span /><span /><b>PUBLIC PAGE PREVIEW</b></div>
-    <article className="content-preview-page">
+  return <div className="overflow-hidden rounded-lg border border-brand-line bg-white shadow-sm">
+    <div className="flex h-11 items-center gap-2 border-b border-brand-line bg-brand-blue px-4">
+      <span className="size-2.5 rounded-full bg-red-400" /><span className="size-2.5 rounded-full bg-amber-400" /><span className="size-2.5 rounded-full bg-emerald-400" />
+      <b className="ml-auto text-xs tracking-widest text-brand-muted">PUBLIC PAGE PREVIEW</b>
+    </div>
+    <article className="max-h-[42.5rem] overflow-auto bg-brand-cream p-[clamp(1.25rem,5vw,3.5rem)]">
       {type !== "job" && type !== "scholarship" && <>
-        <div className="content-preview-heading">
-          <span className="content-preview-kicker">{category || labels[type]}</span>
-          <h1>{title || "Your title will appear here"}</h1>
-          {excerpt && <p className="content-preview-excerpt">{excerpt}</p>}
+        <div className="mx-auto mb-8 max-w-2xl text-center">
+          <span className="text-sm font-bold uppercase tracking-widest text-brand-orange">{category || labels[type]}</span>
+          <h1 className="mb-3 mt-3 text-3xl">{title || "Your title will appear here"}</h1>
+          {excerpt && <p className="mb-0 text-lg leading-relaxed text-brand-muted">{excerpt}</p>}
         </div>
-        {fields.length > 0 && <dl className="content-preview-details">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
+        {fields.length > 0 && <dl className="mx-auto mb-7 grid max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2">{fields.map(([label, value]) => <div className="border border-brand-line bg-white p-3" key={label}><dt className="text-xs uppercase tracking-wide text-brand-muted">{label}</dt><dd className="mb-0 mt-1 text-sm font-bold">{value}</dd></div>)}</dl>}
       </>}
       {type === "job" ? (
         <JobDetailPreview title={title} body={body} data={data} sourceUrl={sourceUrl} />
@@ -68,9 +71,9 @@ export default function ContentPreview({ type, title, excerpt, body, category, d
           }}
         />
       ) : (
-        <RichContent value={body || "<p>Your formatted content will appear here. Add headings, images, links, quotes, and tables in the editor.</p>"} className="content-preview-body" />
+        <RichContent value={body || "<p>Your formatted content will appear here. Add headings, images, links, quotes, and tables in the editor.</p>"} className="mx-auto my-6 max-w-3xl text-base leading-relaxed text-brand-muted [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-brand-orange [&_blockquote]:pl-4 [&_img]:mx-auto [&_img]:my-6 [&_img]:h-auto [&_img]:max-w-full [&_table]:my-6 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-brand-line [&_td]:p-2 [&_th]:border [&_th]:border-brand-line [&_th]:bg-brand-blue [&_th]:p-2 [&_th]:text-left" />
       )}
-      {sourceUrl && type !== "job" && type !== "scholarship" && <span className="content-preview-action">View related source ↗</span>}
+      {sourceUrl && type !== "job" && type !== "scholarship" && <span className="mt-4 inline-flex font-semibold text-brand-purple">View related source ↗</span>}
     </article>
   </div>;
 }

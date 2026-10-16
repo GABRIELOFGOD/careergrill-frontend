@@ -1,6 +1,7 @@
 import { Eyebrow } from "@/components/site-shell";
 import type { SiteContent } from "@/lib/site-data";
 import { jobField } from "./job-detail-utils";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function JobDetailHeader({
   item,
@@ -10,16 +11,16 @@ export default function JobDetailHeader({
   onSave: () => void;
 }) {
   return (
-    <header className="job-detail-header">
-      <div>
+    <header className="mb-5 flex items-start justify-between gap-6 border-b border-brand-line pb-5 max-sm:flex-col">
+      <div className="min-w-0">
         <Eyebrow>{jobField(item, "employer", "Employer")}</Eyebrow>
-        <h1>{item.title}</h1>
-        <p className="job-detail-location">{jobField(item, "location", "Location not stated")}</p>
+        <h1 className="mb-3 text-4xl tracking-tight">{item.title}</h1>
+        <p className="mb-2 text-base text-brand-muted">{jobField(item, "location", "Location not stated")}</p>
         {item.data.application_page_available === true && (
-          <span className="job-application-status">Application page available</span>
+          <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-900">Application page available</span>
         )}
       </div>
-      <button className="button button-outline job-detail-save" type="button" onClick={onSave}>
+      <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={onSave}>
         Save job
       </button>
     </header>

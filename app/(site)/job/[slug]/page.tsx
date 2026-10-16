@@ -7,5 +7,5 @@ async function JobContent({ params }: { params: Promise<{ slug: string }> }) {
 }
 
 export default function JobPage({ params }: { params: Promise<{ slug: string }> }) {
-  return <Suspense fallback={<div className="job-detail-page">Loading job details…</div>}><JobContent params={params} /></Suspense>;
+  return <Suspense fallback={<div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-8">Loading job details…</div>}><JobContent params={params} /></Suspense>;
 }

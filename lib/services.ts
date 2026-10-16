@@ -22,7 +22,7 @@ export interface ServicePageData {
 export const servicePages: ServicePageData[] = [
   {
     slug: "graduate-applications",
-    category: "Graduate admissions, scholarships & fellowships",
+    category: "Graduate admissions",
     title: "Plan your application or improve your statement.",
     excerpt: "From choosing a direction to revising your statement, get support for the decisions and documents that need attention.",
     overviewTitle: "Admissions, scholarships and fellowships",
@@ -56,7 +56,7 @@ export const servicePages: ServicePageData[] = [
   },
   {
     slug: "career-documents",
-    category: "Career documents & interview support",
+    category: "Career documents",
     title: "CV, LinkedIn and interview support.",
     excerpt: "Explain the work you have done, the evidence behind it and its relevance to the roles you want.",
     overviewTitle: "CVs, LinkedIn and interviews",

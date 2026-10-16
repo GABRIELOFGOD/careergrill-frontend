@@ -24,13 +24,13 @@ const multilineFields = new Set([
 
 export default function AdminContentFields({ fields, data, onChange }: AdminContentFieldsProps) {
   return (
-    <div className="admin-extra-fields">
-      <span className="admin-label">DETAILS SHOWN ON THE WEBSITE</span>
-      <div className="admin-form-grid">
+    <div className="grid gap-4">
+      <span className="text-sm font-bold uppercase tracking-widest text-brand-muted">Details shown on the website</span>
+      <div className="grid gap-4 sm:grid-cols-2">
         {fields.map(({ key, label }) => (
           <label
             key={key}
-            className={booleanFields.has(key) ? "admin-boolean-field" : undefined}
+            className={booleanFields.has(key) ? "flex items-center justify-between gap-3 text-sm font-semibold text-brand-ink [&_input]:size-5 [&_input]:accent-brand-purple" : "grid gap-2 text-sm font-semibold text-brand-ink"}
           >
             {label}
             {booleanFields.has(key) ? (
@@ -44,6 +44,7 @@ export default function AdminContentFields({ fields, data, onChange }: AdminCont
                 value={data[key] ?? ""}
                 onChange={(event) => onChange(key, event.target.value)}
                 rows={3}
+                className="min-h-24 w-full rounded border border-brand-line bg-white p-3 text-sm font-normal"
                 placeholder={key === "eligibility_points"
                   ? "Enter one eligibility check per line."
                   : key === "eligibility"
@@ -54,6 +55,7 @@ export default function AdminContentFields({ fields, data, onChange }: AdminCont
               <input
                 value={data[key] ?? ""}
                 onChange={(event) => onChange(key, event.target.value)}
+                className="min-h-10 w-full rounded border border-brand-line bg-white px-3 py-2 text-sm font-normal"
               />
             )}
           </label>

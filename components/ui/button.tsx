@@ -3,13 +3,15 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center gap-3 rounded-lg border border-transparent font-semibold whitespace-nowrap transition-all outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center gap-3 rounded-lg border border-transparent font-semibold whitespace-nowrap transition-all hover:-translate-y-px outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:hover:translate-y-0 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default: "bg-brand-purple text-white hover:bg-brand-purple/90",
         brand: "bg-brand-orange text-brand-ink hover:bg-brand-orange/90",
         outline: "border-brand-ink/25 bg-transparent text-brand-ink hover:border-brand-ink",
+        light: "bg-white text-brand-ink hover:bg-white/90",
+        outlineLight: "border-white/55 bg-transparent text-white hover:bg-white/10",
         secondary: "bg-brand-blue text-brand-ink hover:bg-brand-sage",
         ghost: "text-brand-ink hover:bg-brand-blue",
         destructive: "bg-destructive/10 text-destructive hover:bg-destructive/20",
@@ -42,7 +44,7 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size, className }), "cursor-pointer")}
       {...props}
     />
   )

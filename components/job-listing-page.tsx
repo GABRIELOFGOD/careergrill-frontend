@@ -6,6 +6,10 @@ import { ApiError, apiRequest } from "@/lib/api";
 import type { SiteContent } from "@/lib/site-data";
 import { contentHref } from "@/lib/site-data";
 import { Eyebrow } from "@/components/site-shell";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
+
+const filterFieldClassName = "grid gap-1.5 text-xs font-semibold text-brand-ink [&_select]:min-h-10 [&_select]:w-full [&_select]:rounded [&_select]:border [&_select]:border-brand-line [&_select]:bg-white [&_select]:px-3 [&_select]:py-2 [&_select]:text-sm [&_input]:min-h-11 [&_input]:w-full [&_input]:rounded [&_input]:border [&_input]:border-brand-line [&_input]:bg-white [&_input]:px-3 [&_input]:py-2 [&_input]:text-sm";
 
 function jobValue(item: SiteContent, key: string, fallback = ""): string {
   const value = item.data[key];
@@ -113,38 +117,38 @@ export function JobListingPage() {
 
   return (
     <>
-      <section className="jobs-intro">
-        <div className="content-wrap jobs-intro-inner">
-          <div className="jobs-intro-copy">
+      <section className="bg-brand-sage">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-64 grid-cols-1 items-center gap-7 py-10 md:grid-cols-[minmax(0,1fr)_minmax(15rem,.7fr)] lg:gap-12">
+          <div>
             <Eyebrow>Careergrill / Find jobs</Eyebrow>
-            <h1>Find jobs<br /><em>and internships.</em></h1>
-            <p>Search by role, employer or skill. Filter by location and experience, then check the employer’s instructions before you apply.</p>
-            <div className="jobs-intro-links">
-              <Link href="/workspace/jobs">My saved jobs</Link>
-              <Link href="/scholarships">Looking for a scholarship?</Link>
+            <h1 className="mb-3 text-5xl tracking-tight sm:text-6xl">Find jobs<br /><em>and internships.</em></h1>
+            <p className="mb-4 max-w-2xl text-base leading-relaxed text-brand-muted">Search by role, employer or skill. Filter by location and experience, then check the employer’s instructions before you apply.</p>
+            <div className="flex flex-wrap gap-4 text-sm font-semibold text-brand-purple">
+              <Link className="hover:underline" href="/workspace/jobs">My saved jobs</Link>
+              <Link className="hover:underline" href="/scholarships">Looking for a scholarship?</Link>
             </div>
           </div>
-          <aside className="jobs-intro-side">
+          <aside className="border-t border-brand-line pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0 flex flex-col gap-3">
             <Eyebrow>Discover / check / prepare</Eyebrow>
-            <h2>Start with the work<br />you want to do.</h2>
-            <p>Search by role or skill. Narrow the location and experience level, then read the employer’s requirements before applying.</p>
-            <Link className="text-link" href="/resources/turn-work-into-cv-evidence">Build evidence for your CV</Link>
+            <h2 className="mb-2 text-2xl">Start with the work<br />you want to do.</h2>
+            <p className="text-sm leading-relaxed text-brand-muted">Search by role or skill. Narrow the location and experience level, then read the employer’s requirements before applying.</p>
+            <Link className="text-sm text-brand-purple underline font-bold hover:text-brand-orange-dark decoration-2" href="/resources/turn-work-into-cv-evidence">Build evidence for your CV</Link>
           </aside>
         </div>
       </section>
 
-      <section className="content-wrap jobs-listing-area">
-        <div className="jobs-notice">
-          <strong>Small directory. Employer sources.</strong>
-          <p>These listings are maintained manually. Check the source date and employer’s page for current availability, location restrictions and full instructions.</p>
+      <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 py-6">
+        <div className="mb-4 rounded border border-brand-line bg-brand-blue p-4">
+          <strong className="text-sm">Small directory. Employer sources.</strong>
+          <p className="mb-0 mt-1 text-sm text-brand-muted">These listings are maintained manually. Check the source date and employer’s page for current availability, location restrictions and full instructions.</p>
         </div>
 
-        <div className="jobs-filter-row">
-          <label className="job-search-field">
-            <span className="visually-hidden">Search jobs by title, employer or skill</span>
+        <div className="mb-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">
+          <label className={filterFieldClassName}>
+            <span className="sr-only">Search jobs by title, employer or skill</span>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Job title, employer or skill" />
           </label>
-          <label className="job-filter-field">
+          <label className={filterFieldClassName}>
             <span>Sort by</span>
             <select value={sort} onChange={(event) => setSort(event.target.value)}>
               <option value="default">Default order</option>
@@ -154,22 +158,22 @@ export function JobListingPage() {
           </label>
         </div>
 
-        <div className="jobs-filter-row jobs-filter-secondary">
-          <label className="job-filter-field">
+        <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <label className={filterFieldClassName}>
             <span>Location</span>
             <select value={location} onChange={(event) => setLocation(event.target.value)}>
               <option value="">Any location</option>
               {filterOptions(items, "location").map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
-          <label className="job-filter-field">
+          <label className={filterFieldClassName}>
             <span>Experience level</span>
             <select value={experience} onChange={(event) => setExperience(event.target.value)}>
               <option value="">Any experience</option>
               {filterOptions(items, "experience_level").map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
-          <label className="job-filter-field">
+          <label className={filterFieldClassName}>
             <span>Work arrangement</span>
             <select value={arrangement} onChange={(event) => setArrangement(event.target.value)}>
               <option value="">Any arrangement</option>
@@ -178,17 +182,17 @@ export function JobListingPage() {
           </label>
         </div>
 
-        <details className="jobs-more-filters">
-          <summary>More filters</summary>
-          <div className="jobs-more-filter-fields">
-            <label className="job-filter-field">
+        <details className="mb-2 rounded border border-brand-line px-3">
+          <summary className="cursor-pointer py-3 text-sm font-semibold">More filters</summary>
+          <div className="grid gap-3 pb-3 md:grid-cols-2">
+            <label className={filterFieldClassName}>
               <span>Employment type</span>
               <select value={employment} onChange={(event) => setEmployment(event.target.value)}>
                 <option value="">Any employment type</option>
                 {filterOptions(items, "employment_type").map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
             </label>
-            <label className="job-filter-field">
+            <label className={filterFieldClassName}>
               <span>Closing date</span>
               <select value={closingDate} onChange={(event) => setClosingDate(event.target.value)}>
                 <option value="">Any closing date</option>
@@ -198,83 +202,87 @@ export function JobListingPage() {
           </div>
         </details>
 
-        <div className="jobs-filter-actions">
-          <button className="text-button" type="button" onClick={clearFilters}>Clear all filters</button>
+        <div className="mb-3 flex justify-end">
+          <button className="text-sm font-semibold text-brand-purple hover:underline" type="button" onClick={clearFilters}>Clear all filters</button>
         </div>
 
-        {loadError && <p className="jobs-load-error" role="alert">Could not load the live job directory: {loadError}</p>}
-        {notice && <p className="inline-notice" role="status">{notice} {signInRequired && <Link href="/signin">Sign in ↗</Link>}</p>}
+        {loadError && <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-900" role="alert">Could not load the live job directory: {loadError}</p>}
+        {notice && <p className="my-3 rounded border border-brand-line bg-brand-blue p-3 text-sm" role="status">{notice} {signInRequired && <Link className="font-semibold text-brand-purple" href="/signin">Sign in ↗</Link>}</p>}
 
-        <div className="jobs-listing-heading">
-          <div>
-            <h2>{showAll ? "All job opportunities" : "Featured opportunities"}</h2>
-            <p>{loading ? "Loading opportunities…" : `${featuredCount} featured opportunities`}</p>
+        <div className="my-10 md:mb-10 md:mt-20 flex items-start justify-between gap-4 max-sm:flex-col">
+          <div className="flex flex-col gap-5">
+            <h2 className="mb-1 text-3xl">{showAll ? "All job opportunities" : "Featured opportunities"}</h2>
+            <p className="mb-0 text-sm text-brand-muted">{loading ? "Loading opportunities…" : `${featuredCount} featured opportunities`}</p>
           </div>
           {!showAll && items.length > 0 && (
-            <button className="button button-outline jobs-browse-button" type="button" onClick={() => setShowAll(true)}>
+            <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={() => setShowAll(true)}>
               Browse all jobs ({items.length})
             </button>
           )}
           {showAll && (
-            <button className="button button-outline jobs-browse-button" type="button" onClick={() => setShowAll(false)}>
+            <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={() => setShowAll(false)}>
               Show featured jobs
             </button>
           )}
         </div>
 
-        {loading ? <p className="jobs-loading">Loading job opportunities…</p> : visible.length ? (
-          <div className="jobs-grid">
+        {loading ? <p className="py-8 text-center text-sm text-brand-muted">Loading job opportunities…</p> : visible.length ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visible.map((item) => {
               const employer = jobValue(item, "employer");
               const initials = jobValue(item, "logo_initials", employer.slice(0, 2).toUpperCase());
               const closingDateValue = jobValue(item, "closing_date", "Not stated by employer");
               const applicationAvailable = item.data.application_page_available === true;
               return (
-                <article className="job-card" key={item.id}>
-                  <div className="job-card-top">
-                    <span className="job-employer-mark" aria-hidden="true">{initials}</span>
-                    <span className="job-arrangement">{jobValue(item, "work_arrangement", "Not stated")}</span>
+                <article className="flex min-h-100 flex-col rounded border border-brand-line bg-white p-5" key={item.id}>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-lg text-brand-purple font-bold bg-brand-blue" aria-hidden="true">{initials}</span>
+                    <span className="rounded-full bg-brand-blue px-2 py-1 text-xs text-brand-purple">{jobValue(item, "work_arrangement", "Not stated")}</span>
                   </div>
-                  <p className="job-employer">{employer}</p>
-                  <h3><Link href={contentHref("job", item.slug)}>{item.title}</Link></h3>
-                  <p className="job-location">{jobValue(item, "location", "Location not stated")}</p>
-                  <p className="job-description">{item.excerpt}</p>
-                  <div className="job-tags">
-                    <span>{jobValue(item, "experience_level", "Not stated")}</span>
-                    <span>{jobValue(item, "employment_type", "Not stated")}</span>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-eyebrow">{employer}</p>
+                  <h3 className="mb-1 text-lg font-bold"><Link className="hover:text-brand-purple" href={contentHref("job", item.slug)}>{item.title}</Link></h3>
+                  <p className="mb-2 text-sm text-brand-muted">{jobValue(item, "location", "Location not stated")}</p>
+                  <p className="mb-3 text-sm leading-relaxed text-brand-muted">{item.excerpt}</p>
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    <span className="rounded bg-brand-blue px-2 py-1 text-xs">{jobValue(item, "experience_level", "Not stated")}</span>
+                    <span className="rounded bg-brand-blue px-2 py-1 text-xs">{jobValue(item, "employment_type", "Not stated")}</span>
                   </div>
-                  <p className="job-salary">{jobValue(item, "salary", "Salary not disclosed")}</p>
-                  <div className="job-card-details">
-                    <span>Closing date</span>
+                  <p className="mb-3 text-sm font-semibold">{jobValue(item, "salary", "Salary not disclosed")}</p>
+                  <div className="mb-3 grid gap-1 border-y border-brand-line py-2 text-xs">
+                    <span className="text-brand-muted">Closing date</span>
                     <strong>{closingDateValue === "Not stated by employer" ? closingDateValue : closingDateLabel(closingDateValue)}</strong>
                   </div>
-                  {applicationAvailable && <span className="job-application-status">Application page available</span>}
-                  <div className="job-card-actions">
-                    <Link className="job-view-button" href={contentHref("job", item.slug)}>View job</Link>
-                    <button className="job-save-button" type="button" onClick={() => void saveJob(item.id)}>Save job</button>
+                  {applicationAvailable && <span className="mb-2 inline-flex self-start rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-900">Application page available</span>}
+                  <div className="mt-auto flex gap-2 w-full">
+                    <Link className="w-full" href={contentHref("job", item.slug)}>
+                      <Button className={cn("w-full")}>View job</Button>
+                    </Link>
+                    <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={() => void saveJob(item.id)}>Save job</button>
                   </div>
-                  <p className="job-source-date">Source checked {jobValue(item, "source_checked_at", "date not stated")}</p>
+                  <p className="mb-0 mt-3 text-xs text-brand-muted">Source checked {jobValue(item, "source_checked_at", "date not stated")}</p>
                 </article>
               );
             })}
           </div>
         ) : (
-          <div className="jobs-empty-state">
-            <h3>No matching jobs.</h3>
-            <p>Try another search or clear some filters.</p>
+          <div className="rounded border border-dashed border-brand-line p-8 text-center">
+            <h3 className="mb-2 text-lg font-bold">No matching jobs.</h3>
+            <p className="mb-0 text-sm text-brand-muted">Try another search or clear some filters.</p>
           </div>
         )}
 
-        <section className="jobs-application-callout">
-          <div>
+        <section className="mt-8 grid items-center gap-5 md:gap-10 rounded-md bg-brand-sage p-6 md:grid-cols-3">
+          <div className="md:col-span-2">
             <Eyebrow>Prepare your application</Eyebrow>
-            <h2>Found a role worth pursuing?</h2>
-            <p>Use the CV evidence worksheet to organise your examples. For a personal CV review, share the job description and ask Careergrill what the review includes and costs.</p>
+            <h2 className="mb-2 text-2xl">Found a role worth pursuing?</h2>
+            <p className="mb-0 text-sm leading-relaxed text-brand-muted">Use the CV evidence worksheet to organise your examples. For a personal CV review, share the job description and ask Careergrill what the review includes and costs.</p>
           </div>
-          <div className="jobs-application-links">
-            <Link className="button button-dark" href="/career-audit?goal=job">Start an AI job audit</Link>
-            <Link href="/resources/turn-work-into-cv-evidence">Open the CV worksheet</Link>
-            <Link href="/consultation">Discuss a CV review</Link>
+          <div className="flex flex-col gap-3 font-semibold">
+            <Link href="/career-audit?goal=job">
+              <Button className="bg-brand-orange hover:bg-brand-orange/90 text-brand-purple">Start an AI job audit</Button>
+            </Link>
+            <Link className="text-sm font-semibold text-brand-purple underline" href="/resources/turn-work-into-cv-evidence">Open the CV worksheet</Link>
+            <Link className="text-sm font-semibold text-brand-purple underline" href="/consultation">Discuss a CV review</Link>
           </div>
         </section>
       </section>

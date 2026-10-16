@@ -10,11 +10,11 @@ export default function JobDetailFacts({ item }: { item: SiteContent }) {
   ];
 
   return (
-    <dl className="job-detail-facts">
+    <dl className="mb-5 grid grid-cols-2 border-y border-brand-line py-3 md:grid-cols-4">
       {facts.map(([label, value]) => (
-        <div key={label}>
-          <dt>{label}</dt>
-          <dd>{value}</dd>
+        <div className="grid min-w-0 gap-1 border-r border-brand-line px-2.5 first:pl-0 last:border-0 odd:max-md:border-r max-md:mb-3 max-md:last:mb-0" key={label}>
+          <dt className="text-xs uppercase text-brand-muted">{label}</dt>
+          <dd className="m-0 break-words text-sm font-bold leading-snug">{value}</dd>
         </div>
       ))}
     </dl>

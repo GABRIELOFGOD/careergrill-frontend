@@ -21,7 +21,7 @@ export function SiteBrand({ footer = false }: { footer?: boolean }) {
 function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-brand-line bg-brand-cream/95 backdrop-blur-sm">
-      <div className="mx-auto flex min-h-17 w-[calc(100%-2.25rem)] items-center justify-between gap-3 py-2 md:w-[calc(100%-4rem)] lg:min-h-22 lg:gap-6">
+      <div className="mx-auto flex min-h-17 w-full max-w-7xl px-4 items-center justify-between gap-3 py-2 lg:min-h-22 lg:gap-6">
         <SiteBrand />
         <SiteNavigation />
         <div className="hidden items-center lg:flex">
@@ -37,7 +37,7 @@ function Header() {
 function Footer() {
   return (
     <footer className="bg-brand-ink pt-10 text-brand-footer">
-      <div className="mx-auto grid w-[calc(100%-2.25rem)] grid-cols-2 gap-6 pb-9 sm:w-[calc(100%-4rem)] lg:grid-cols-[1.4fr_.75fr_.9fr] lg:gap-11">
+      <div className="mx-auto grid w-full max-w-7xl px-4 grid-cols-2 gap-6 pb-9 lg:grid-cols-[1.4fr_.75fr_.9fr] lg:gap-11">
         <div className="col-span-2 lg:col-span-1">
           <SiteBrand footer />
           <p className="mt-2.5 text-sm text-brand-footer-muted">Clearer direction. Stronger applications.</p>
@@ -82,5 +82,5 @@ export function SiteChrome({ children }: { children: ReactNode }) {
 }
 
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cn("mb-3 text-sm font-bold uppercase leading-snug tracking-[.13em] text-brand-muted", className)}>{children}</p>;
+  return <p className={cn("mb-3 text-xs font-bold uppercase leading-snug tracking-[.13em] text-brand-orange-dark", className)}>{children}</p>;
 }

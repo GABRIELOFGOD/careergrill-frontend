@@ -7,5 +7,5 @@ async function FaqContent({ params }: { params: Promise<{ slug: string }> }) {
 }
 
 export default function FaqPage({ params }: { params: Promise<{ slug: string }> }) {
-  return <Suspense fallback={<div className="simple-page content-wrap">Loading answer…</div>}><FaqContent params={params} /></Suspense>;
+  return <Suspense fallback={<div className="grid min-h-[55vh] content-center justify-items-start gap-3 py-12 mx-auto w-full max-w-7xl px-4 sm:px-8">Loading answer…</div>}><FaqContent params={params} /></Suspense>;
 }
