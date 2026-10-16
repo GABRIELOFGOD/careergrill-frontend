@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en">
-      <body className={`${dmSans.variable} ${manrope.variable} min-h-screen antialiased`}>{children}</body>
+    <html lang="en" className={`${dmSans.variable} ${manrope.variable} font-sans`}>
+      <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
 }
