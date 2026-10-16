@@ -11,7 +11,10 @@ Next.js frontend for the Careergrill public website and content-management dashb
 - `app/layout.tsx`: root document, fonts, global styles, and metadata.
 - `components/site-shell.tsx`: public header/footer and shared site chrome.
 - `components/job-detail/`: focused job-page header, facts, application, eligibility, preparation, source, and preview components. The location/eligibility callout and application instructions are editable from the dashboard.
-- `components/public-site.tsx`, `components/admin-console.tsx`, and `components/rich-text-editor.tsx`: interactive site and dashboard views, including a Word-style editor for formatting, links, tables, quotes, and uploaded inline images. Content previews show the reader-facing layout before manual or AI-generated content is published.
+- `components/scholarship-detail/`: shared scholarship detail layout used by the public route and the CMS reader preview, with editable funding, eligibility, and provider-record details.
+- `components/services-page.tsx` and `lib/services.ts`: shared, data-driven service overview and the graduate-application, career-document, and MBA service detail pages, with their booking answers and links.
+- `components/blog-pages.tsx` and `lib/blog-content.ts`: searchable, topic-filtered blog listing and a responsive article reader with cover artwork, generated contents links, related resources, and published-article fallback content.
+- `components/public-site.tsx`, `components/admin-console.tsx`, and `components/rich-text-editor.tsx`: interactive site and dashboard views, including the multi-step AI Career Audit and its administrator-configurable feedback instructions, plus a Word-style editor for formatting, links, tables, quotes, and uploaded inline images. Content previews show the reader-facing layout before manual or AI-generated content is published.
 - `lib/api.ts`: centralized browser HTTP client. It builds API URLs, sends credentials, sets JSON headers only for JSON request bodies, and reports structured API errors. The frontend talks to the separately deployable API over HTTP and does not import backend code.
 - Tailwind CSS 4 is configured in `app/globals.css`; its theme tokens match the prototype cream, ink-purple, and orange palette.
 - `.env.example`: optional API origin configuration for local development and deployment.

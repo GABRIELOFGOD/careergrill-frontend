@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { Node } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
@@ -10,6 +11,30 @@ import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 import { marked } from "marked";
 import { apiRequest, apiUrl } from "@/lib/api";
+
+const TextBox = Node.create({
+  name: "textBox",
+  group: "block",
+  content: "block+",
+  defining: true,
+  addAttributes() {
+    return {
+      backgroundColor: {
+        default: "#eee8f4",
+        parseHTML: (element) => element.style.backgroundColor || "#eee8f4",
+        renderHTML: (attributes) => ({
+          style: `background-color: ${attributes.backgroundColor}`,
+        }),
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "div[data-text-box]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["div", { ...HTMLAttributes, "data-text-box": "" }, 0];
+  },
+});
 
 interface RichTextEditorProps {
   value: string;
@@ -31,6 +56,10 @@ function editorHtml(value: string): string {
 
 export default function RichTextEditor({ value, onChange, onError }: RichTextEditorProps) {
   const imageInput = useRef<HTMLInputElement>(null);
+  const [tableOptionsOpen, setTableOptionsOpen] = useState(false);
+  const [tableRows, setTableRows] = useState("3");
+  const [tableColumns, setTableColumns] = useState("3");
+  const [textBoxColor, setTextBoxColor] = useState("#eee8f4");
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -43,6 +72,7 @@ export default function RichTextEditor({ value, onChange, onError }: RichTextEdi
       TableRow,
       TableHeader,
       TableCell,
+      TextBox,
     ],
     content: editorHtml(value),
     editorProps: {
@@ -90,8 +120,20 @@ export default function RichTextEditor({ value, onChange, onError }: RichTextEdi
     editor.chain().focus().extendMarkRange("link").setLink({ href: href.trim() }).run();
   }
 
-  function addTable() {
-    editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  function insertTable() {
+    if (!editor) return;
+    const rows = Number(tableRows);
+    const cols = Number(tableColumns);
+    if (!Number.isInteger(rows) || !Number.isInteger(cols) || rows < 1 || rows > 20 || cols < 1 || cols > 20) return;
+    editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+    setTableOptionsOpen(false);
+  }
+
+  function toggleTextBox() {
+    if (!editor) return;
+    const chain = editor.chain().focus();
+    if (editor.isActive("textBox")) chain.lift("textBox").run();
+    else chain.wrapIn("textBox", { backgroundColor: textBoxColor }).run();
   }
 
   if (!editor) return <div className="rich-editor-loading" aria-busy="true">Preparing editor…</div>;
@@ -131,7 +173,38 @@ export default function RichTextEditor({ value, onChange, onError }: RichTextEdi
       {action("Numbered list", "1≡", editor.isActive("orderedList"), () => editor.chain().focus().toggleOrderedList().run())}
       {action("Quote", "❝", editor.isActive("blockquote"), () => editor.chain().focus().toggleBlockquote().run())}
       {action("Link", "↗", editor.isActive("link"), addLink)}
-      {action("Insert table", "▦", editor.isActive("table"), addTable)}
+      {action("Insert table", "▦", tableOptionsOpen || editor.isActive("table"), () => setTableOptionsOpen((open) => !open))}
+      {action(editor.isActive("textBox") ? "Remove text box" : "Insert text box", "▤", editor.isActive("textBox"), toggleTextBox)}
+      <label className="rich-editor-color-tool" title="Text box background color">
+        <span>Box color</span>
+        <input
+          type="color"
+          aria-label="Text box background color"
+          value={textBoxColor}
+          onChange={(event) => {
+            const color = event.target.value;
+            setTextBoxColor(color);
+            if (editor.isActive("textBox")) {
+              editor.chain().focus().updateAttributes("textBox", { backgroundColor: color }).run();
+            }
+          }}
+        />
+      </label>
+      {tableOptionsOpen && <div className="rich-editor-table-options" role="group" aria-label="Table size">
+        <label>Rows
+          <input type="number" min="1" max="20" step="1" required value={tableRows} onChange={(event) => setTableRows(event.target.value)} />
+        </label>
+        <label>Columns
+          <input type="number" min="1" max="20" step="1" required value={tableColumns} onChange={(event) => setTableColumns(event.target.value)} />
+        </label>
+        <button
+          type="button"
+          className="rich-editor-text-tool"
+          disabled={!Number.isInteger(Number(tableRows)) || !Number.isInteger(Number(tableColumns))
+            || Number(tableRows) < 1 || Number(tableRows) > 20 || Number(tableColumns) < 1 || Number(tableColumns) > 20}
+          onClick={insertTable}
+        >Insert table</button>
+      </div>}
       {editor.isActive("table") && <>
         <button type="button" className="rich-editor-text-tool" onClick={() => editor.chain().focus().addRowAfter().run()}>Add row</button>
         <button type="button" className="rich-editor-text-tool" onClick={() => editor.chain().focus().addColumnAfter().run()}>Add column</button>
@@ -153,6 +226,6 @@ export default function RichTextEditor({ value, onChange, onError }: RichTextEdi
       />
     </div>
     <EditorContent editor={editor} />
-    <div className="rich-editor-footer">Select text to format. Upload PNG, JPEG, GIF or WebP images up to 10 MB; they are inserted here.</div>
+    <div className="rich-editor-footer">Select text to format. Set table size before inserting, add a colored text box, or upload PNG, JPEG, GIF and WebP images up to 10 MB.</div>
   </div>;
 }

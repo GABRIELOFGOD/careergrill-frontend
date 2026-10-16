@@ -10,7 +10,17 @@ interface AdminContentFieldsProps {
 }
 
 const booleanFields = new Set(["featured", "application_page_available"]);
-const multilineFields = new Set(["eligibility", "application_instructions"]);
+const multilineFields = new Set([
+  "eligibility",
+  "application_instructions",
+  "coverage_primary_text",
+  "coverage_secondary_text",
+  "nationality_residence",
+  "eligibility_points",
+  "eligibility_note",
+  "provider_record",
+  "cover_lines",
+]);
 
 export default function AdminContentFields({ fields, data, onChange }: AdminContentFieldsProps) {
   return (
@@ -34,9 +44,11 @@ export default function AdminContentFields({ fields, data, onChange }: AdminCont
                 value={data[key] ?? ""}
                 onChange={(event) => onChange(key, event.target.value)}
                 rows={3}
-                placeholder={key === "eligibility"
-                  ? "For example: National contract with field responsibilities. Confirm local employment eligibility."
-                  : "Add application documents and instructions."}
+                placeholder={key === "eligibility_points"
+                  ? "Enter one eligibility check per line."
+                  : key === "eligibility"
+                    ? "For example: National contract with field responsibilities. Confirm local employment eligibility."
+                    : "Add relevant details."}
               />
             ) : (
               <input

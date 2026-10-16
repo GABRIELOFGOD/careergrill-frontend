@@ -23,6 +23,7 @@ interface AdminFile {
 interface Settings {
   ai_provider: AiProvider;
   ai_models: Record<AiProvider, string>;
+  career_audit_prompt: string;
   storage_provider: "supabase" | "cloudinary";
   configured_ai_providers: AiProvider[];
   cloudinary_configured: boolean;
@@ -73,16 +74,35 @@ const fieldsByType: Partial<Record<ContentType, { key: string; label: string }[]
     { key: "provider", label: "Award provider" },
     { key: "study_level", label: "Study level" },
     { key: "destination", label: "Destination" },
-    { key: "award_coverage", label: "Funding coverage" },
+    { key: "coverage_primary_title", label: "Funding card 1 heading" },
+    { key: "coverage_primary_text", label: "Funding card 1 details" },
+    { key: "coverage_secondary_title", label: "Funding card 2 heading" },
+    { key: "coverage_secondary_text", label: "Funding card 2 details" },
+    { key: "award_coverage", label: "Funding coverage summary (fallback)" },
     { key: "deadline", label: "Application deadline" },
     { key: "funding_type", label: "Funding type" },
     { key: "award_badge", label: "Award badge" },
     { key: "application_status", label: "Application status" },
     { key: "cycle_label", label: "Cycle label" },
     { key: "source_checked_at", label: "Source checked date" },
+    { key: "eligibility_status", label: "Eligibility status badge" },
+    { key: "subject_areas", label: "Subject areas" },
+    { key: "nationality_residence", label: "Nationality and residence" },
+    { key: "eligibility_points", label: "Eligibility checks (one per line)" },
+    { key: "eligibility_note", label: "Eligibility note" },
+    { key: "provider_record", label: "Provider record summary" },
     { key: "featured", label: "Feature on public listing" },
   ],
-  article: [{ key: "author", label: "Author" }, { key: "reading_minutes", label: "Reading time (minutes)" }],
+  article: [
+    { key: "author", label: "Author" },
+    { key: "reading_minutes", label: "Reading time (minutes)" },
+    { key: "featured", label: "Feature as the lead blog article" },
+    { key: "cover_theme", label: "Article cover colour theme" },
+    { key: "cover_label", label: "Article cover topic label" },
+    { key: "cover_lines", label: "Article cover prompts (one per line)" },
+    { key: "related_resource_slug", label: "Related resource URL slug" },
+    { key: "related_resource_title", label: "Related resource title" },
+  ],
   resource: [{ key: "format", label: "Resource format" }],
   testimonial: [{ key: "author", label: "Client name" }, { key: "attribution", label: "Feedback context" }],
 };
@@ -158,6 +178,7 @@ export default function AdminConsole() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [draft, setDraft] = useState(emptyDraft);
   const [editingId, setEditingId] = useState("");
+  const editingContentId = useRef("");
   const [isEditingPublished, setIsEditingPublished] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [aiType, setAiType] = useState<ContentType>("article");
@@ -176,6 +197,7 @@ export default function AdminConsole() {
       anthropic: "claude-sonnet-4-20250514",
       google: "gemini-2.5-flash",
     },
+    career_audit_prompt: "",
     storage_provider: "supabase" as Settings["storage_provider"],
     ai_api_key: "",
     cloudinary_cloud_name: "",
@@ -191,6 +213,7 @@ export default function AdminConsole() {
         setAiDraftReady(false);
       } else {
         setDraft({ ...emptyDraft, type: contentType });
+        editingContentId.current = "";
         setEditingId("");
         setIsEditingPublished(false);
       }
@@ -224,6 +247,7 @@ export default function AdminConsole() {
         ai_provider: settingsResult.ai_provider,
         ai_model: settingsResult.ai_model,
         ai_models: settingsResult.ai_models,
+        career_audit_prompt: settingsResult.career_audit_prompt,
         storage_provider: settingsResult.storage_provider,
       }));
       setAiProvider((current) => settingsResult.configured_ai_providers.includes(current)
@@ -294,6 +318,7 @@ export default function AdminConsole() {
 
   function editContent(item: AdminContent) {
     setContentPreview(false);
+    editingContentId.current = item.id;
     setEditingId(item.id);
     setIsEditingPublished(item.status === "published");
     setDraft({
@@ -320,6 +345,7 @@ export default function AdminConsole() {
     }
     setBusy(true);
     setNotice("");
+    const contentId = editingContentId.current;
     const body = {
       ...draft,
       body: persistedContentBody(draft.body),
@@ -331,11 +357,12 @@ export default function AdminConsole() {
       data: serializedContentData(draft.data),
     };
     try {
-      await apiRequest(editingId ? `/admin/content/${editingId}` : "/admin/content", {
-        method: editingId ? "PATCH" : "POST",
+      await apiRequest(contentId ? `/admin/content/${contentId}` : "/admin/content", {
+        method: contentId ? "PATCH" : "POST",
         body: JSON.stringify(body),
       });
       setNotice(status === "published" ? "Content published." : "Draft saved.");
+      editingContentId.current = "";
       setEditingId("");
       setIsEditingPublished(false);
       setDraft({ ...emptyDraft, type: contentType ?? "article" });
@@ -408,6 +435,7 @@ export default function AdminConsole() {
         status: "draft",
         data: {},
       });
+      editingContentId.current = "";
       setEditingId("");
       setAiDraftReady(true);
       setNotice("AI draft ready. Review every detail and save it below when you’re satisfied.");
@@ -470,7 +498,7 @@ export default function AdminConsole() {
       setOverview((current) => current ? { ...current, documentCount: current.documentCount + 1 } : current);
       setFile(null);
       setUploadProgress(null);
-      setNotice("File uploaded. Text indexing is running in the background; it will become available to AI when ready.");
+      setNotice("File uploaded and indexed. It is ready to use in AI drafts.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "The document could not be uploaded.");
     } finally {
@@ -542,6 +570,27 @@ export default function AdminConsole() {
       setNotice(error instanceof Error ? error.message : "Could not save AI model names.");
     } finally {
       setBusy(false);
+    }
+
+    async function saveCareerAuditPrompt(event: FormEvent<HTMLFormElement>) {
+      event.preventDefault();
+      setBusy(true);
+      setNotice("");
+      try {
+        await apiRequest("/admin/settings", {
+          method: "PUT",
+          body: JSON.stringify({ career_audit_prompt: settingsForm.career_audit_prompt }),
+        });
+        setSettings((current) => current
+          ? { ...current, career_audit_prompt: settingsForm.career_audit_prompt.trim() }
+          : current);
+        setSettingsForm((current) => ({ ...current, career_audit_prompt: current.career_audit_prompt.trim() }));
+        setNotice("Career Audit instructions saved.");
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : "Could not save Career Audit instructions.");
+      } finally {
+        setBusy(false);
+      }
     }
   }
 
@@ -643,7 +692,7 @@ export default function AdminConsole() {
               {fieldsByType[draft.type]?.length ? <AdminContentFields fields={fieldsByType[draft.type] ?? []} data={draft.data} onChange={(key, value) => setDraft((current) => ({ ...current, data: { ...current.data, [key]: value } }))} /> : null}
               <label>Content</label><RichTextEditor value={draft.body} onChange={(body) => setDraft((current) => ({ ...current, body }))} onError={setNotice} />
               <div className="admin-form-grid"><label>Official source URL<input type="url" value={draft.source_url} onChange={(event) => setDraft({ ...draft, source_url: event.target.value })} placeholder="https://" /></label><label>Expiry date<input type="date" value={draft.expires_at} onChange={(event) => setDraft({ ...draft, expires_at: event.target.value })} /></label></div>
-              <div className="editor-actions"><span className="muted-copy">{isEditingPublished ? "Preview your edits before updating the published page." : "Preview before publishing to check how this appears to readers."}</span><div><button type="button" className="button button-outline" onClick={() => { setEditingId(""); setIsEditingPublished(false); setContentPreview(false); setDraft({ ...emptyDraft, type: contentType ?? "article" }); }}>Clear</button><button className="button button-dark" disabled={busy}>{busy ? "Saving…" : isEditingPublished ? "Preview changes" : "Save draft"}</button></div></div>
+              <div className="editor-actions"><span className="muted-copy">{editingId ? "Preview your edits before updating this item." : "Preview before publishing to check how this appears to readers."}</span><div><button type="button" className="button button-outline" onClick={() => { editingContentId.current = ""; setEditingId(""); setIsEditingPublished(false); setContentPreview(false); setDraft({ ...emptyDraft, type: contentType ?? "article" }); }}>Clear</button><button className="button button-dark" disabled={busy}>{busy ? "Saving…" : editingId ? "Preview changes" : "Save draft"}</button></div></div>
               </>}
             </form>
           </div>
@@ -702,8 +751,40 @@ export default function AdminConsole() {
           </div>
           <button className="button button-dark" disabled={busy}>{busy ? "Saving…" : "Save AI model names"}</button>
         </form>}
-        {section === "files" ? <section className="admin-grid files-layout"><div className="admin-card"><div className="admin-card-heading"><div><span className="admin-label">REFERENCE LIBRARY</span><h2>Give the AI useful context.</h2></div><span className="admin-card-icon">↥</span></div><p>Private reference files are stored using the selected provider. Text is extracted for AI drafts. Supported: PDF, DOCX, TXT and Markdown. Maximum 10 MB each.</p><form className="upload-panel" onSubmit={(event) => void uploadFile(event)}><label className="file-drop"><input type="file" accept=".pdf,.docx,.txt,.md" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><span className="upload-symbol">↑</span><strong>{file ? file.name : "Choose a document to upload"}</strong><small>{file ? `${(file.size / 1024).toFixed(0)} KB` : "Private files · 10 MB maximum"}</small></label><button className="button button-dark" disabled={busy || !file}>{busy ? "Uploading…" : "Upload reference file"}</button></form><p className="muted-copy">Only administrators can view or use uploaded material. Select individual files for each AI draft.</p></div><div className="admin-card"><div className="admin-card-heading"><div><span className="admin-label">UPLOADED DOCUMENTS</span><h2>{files.length} files</h2></div></div>{files.map((item) => <article className="file-row" key={item.id}><div className="file-icon">DOC</div><div className="file-info"><strong>{item.filename}</strong><span>{(item.size_bytes / 1024).toFixed(0)} KB · {new Date(item.created_at).toLocaleDateString()}</span></div><button className="danger-text" onClick={() => void deleteFile(item.id)}>Remove</button></article>)}{!files.length && <p className="empty-note">Your private reference library is empty.</p>}</div></section> : null}
-        {section === "settings" ? <section className="admin-grid settings-layout"><form className="admin-card settings-card" onSubmit={(event) => void saveSettings(event)}><div className="admin-card-heading"><div><span className="admin-label">AI PROVIDER</span><h2>Choose your writing assistant.</h2></div><span className="connection-state">{settings?.configured_ai_providers.length ? "● Connected" : "○ Not connected"}</span></div><p>Bring your own provider key. Keys are encrypted with AES-256-GCM on the server and never shown again after saving.</p><label>AI provider<select value={settingsForm.ai_provider} onChange={(event) => setSettingsForm({ ...settingsForm, ai_provider: event.target.value as Settings["ai_provider"] })}><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="google">Google AI Studio</option></select></label><label>Model name<input value={settingsForm.ai_model} onChange={(event) => setSettingsForm({ ...settingsForm, ai_model: event.target.value })} required /></label><label>API key<input type="password" autoComplete="new-password" value={settingsForm.ai_api_key} onChange={(event) => setSettingsForm({ ...settingsForm, ai_api_key: event.target.value })} placeholder={settings?.configured_ai_providers.includes(settingsForm.ai_provider) ? "Key saved · enter a new key to replace" : "Paste provider API key"} /></label><button className="button button-dark" disabled={busy}>Save AI settings</button></form><form className="admin-card settings-card" onSubmit={(event) => void saveSettings(event)}><div className="admin-card-heading"><div><span className="admin-label">FILE STORAGE</span><h2>Your files, your choice.</h2></div><span className="connection-state">{settings?.cloudinary_configured ? "● Cloudinary ready" : "○ Configure credentials"}</span></div><p>Select where private source files are stored. Supabase uses your configured private bucket. Cloudinary assets use authenticated access.</p><label>Storage provider<select value={settingsForm.storage_provider} onChange={(event) => setSettingsForm({ ...settingsForm, storage_provider: event.target.value as Settings["storage_provider"] })}><option value="supabase">Supabase Storage</option><option value="cloudinary">Cloudinary</option></select></label>{settingsForm.storage_provider === "cloudinary" && <><label>Cloudinary cloud name<input value={settingsForm.cloudinary_cloud_name} onChange={(event) => setSettingsForm({ ...settingsForm, cloudinary_cloud_name: event.target.value })} /></label><label>Cloudinary API key<input value={settingsForm.cloudinary_api_key} onChange={(event) => setSettingsForm({ ...settingsForm, cloudinary_api_key: event.target.value })} /></label><label>Cloudinary API secret<input type="password" autoComplete="new-password" value={settingsForm.cloudinary_api_secret} onChange={(event) => setSettingsForm({ ...settingsForm, cloudinary_api_secret: event.target.value })} /></label></>}<button className="button button-dark" disabled={busy}>Save storage settings</button></form><div className="admin-card settings-card"><div className="admin-card-heading"><div><span className="admin-label">EMAIL REMINDERS</span><h2>Keep people in the loop.</h2></div><span className="connection-state">{settings?.email_configured ? "● Configured" : "○ Needs setup"}</span></div><p>SMTP settings are provided as environment variables. Verified users who save expiring listings can receive one reminder up to three days before expiry.</p><Link className="admin-inline-link" href="/privacy">Review privacy information ↗</Link></div></section> : null}
+        {section === "files" ? <section className="admin-grid files-layout"><div className="admin-card"><div className="admin-card-heading"><div><span className="admin-label">REFERENCE LIBRARY</span><h2>Give the AI useful context.</h2></div><span className="admin-card-icon">↥</span></div><p>Private reference files are stored using the selected provider. Text is extracted for AI drafts. Supported: PDF, DOCX, TXT and Markdown. Maximum 10 MB each.</p><form className="upload-panel" onSubmit={(event) => void uploadFile(event)}><label className="file-drop"><input type="file" accept=".pdf,.docx,.txt,.md" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><span className="upload-symbol">↑</span><strong>{file ? file.name : "Choose a document to upload"}</strong><small>{file ? `${(file.size / 1024).toFixed(0)} KB` : "Private files · 10 MB maximum"}</small></label><button className="button button-dark" disabled={busy || !file}>{busy ? "Uploading…" : "Upload reference file"}</button></form><p className="muted-copy">Only administrators can view or use uploaded material. Select individual files for each AI draft.</p></div><div className="admin-card"><div className="admin-card-heading"><div><span className="admin-label">UPLOADED DOCUMENTS</span><h2>{files.length} files</h2></div></div>{files.map((item) => <article className="file-row" key={item.id}><div className="file-icon">DOC</div><div className="file-info"><strong>{item.filename}</strong><span>{(item.size_bytes / 1024).toFixed(0)} KB · {new Date(item.created_at).toLocaleDateString()} · {item.processing_status === "ready" ? "Ready for AI" : item.processing_status === "processing" ? "Processing" : "Failed — remove and upload again"}</span></div><button className="danger-text" onClick={() => void deleteFile(item.id)}>Remove</button></article>)}{!files.length && <p className="empty-note">Your private reference library is empty.</p>}</div></section> : null}
+        {section === "settings" ? <>
+          <section className="admin-grid settings-layout">
+            <form className="admin-card settings-card" onSubmit={(event) => void saveSettings(event)}>
+              <div className="admin-card-heading"><div><span className="admin-label">AI PROVIDER</span><h2>Choose your writing assistant.</h2></div><span className="connection-state">{settings?.configured_ai_providers.length ? "● Connected" : "○ Not connected"}</span></div>
+              <p>Bring your own provider key. Keys are encrypted with AES-256-GCM on the server and never shown again after saving.</p>
+              <label>AI provider<select value={settingsForm.ai_provider} onChange={(event) => setSettingsForm({ ...settingsForm, ai_provider: event.target.value as Settings["ai_provider"] })}><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="google">Google AI Studio</option></select></label>
+              <label>Model name<input value={settingsForm.ai_model} onChange={(event) => setSettingsForm({ ...settingsForm, ai_model: event.target.value })} required /></label>
+              <label>API key<input type="password" autoComplete="new-password" value={settingsForm.ai_api_key} onChange={(event) => setSettingsForm({ ...settingsForm, ai_api_key: event.target.value })} placeholder={settings?.configured_ai_providers.includes(settingsForm.ai_provider) ? "Key saved · enter a new key to replace" : "Paste provider API key"} /></label>
+              <button className="button button-dark" disabled={busy}>Save AI settings</button>
+            </form>
+            <form className="admin-card settings-card" onSubmit={(event) => void saveSettings(event)}>
+              <div className="admin-card-heading"><div><span className="admin-label">FILE STORAGE</span><h2>Your files, your choice.</h2></div><span className="connection-state">{settings?.cloudinary_configured ? "● Cloudinary ready" : "○ Configure credentials"}</span></div>
+              <p>Select where private source files are stored. Supabase uses your configured private bucket. Cloudinary assets use authenticated access.</p>
+              <label>Storage provider<select value={settingsForm.storage_provider} onChange={(event) => setSettingsForm({ ...settingsForm, storage_provider: event.target.value as Settings["storage_provider"] })}><option value="supabase">Supabase Storage</option><option value="cloudinary">Cloudinary</option></select></label>
+              {settingsForm.storage_provider === "cloudinary" && <><label>Cloudinary cloud name<input value={settingsForm.cloudinary_cloud_name} onChange={(event) => setSettingsForm({ ...settingsForm, cloudinary_cloud_name: event.target.value })} /></label><label>Cloudinary API key<input value={settingsForm.cloudinary_api_key} onChange={(event) => setSettingsForm({ ...settingsForm, cloudinary_api_key: event.target.value })} /></label><label>Cloudinary API secret<input type="password" autoComplete="new-password" value={settingsForm.cloudinary_api_secret} onChange={(event) => setSettingsForm({ ...settingsForm, cloudinary_api_secret: event.target.value })} /></label></>}
+              <button className="button button-dark" disabled={busy}>Save storage settings</button>
+            </form>
+            <div className="admin-card settings-card">
+              <div className="admin-card-heading"><div><span className="admin-label">EMAIL REMINDERS</span><h2>Keep people in the loop.</h2></div><span className="connection-state">{settings?.email_configured ? "● Configured" : "○ Needs setup"}</span></div>
+              <p>SMTP settings are provided as environment variables. Verified users who save expiring listings can receive one reminder up to three days before expiry.</p>
+              <Link className="admin-inline-link" href="/privacy">Review privacy information ↗</Link>
+            </div>
+          </section>
+          <form className="admin-card settings-card settings-audit-prompt" onSubmit={(event) => void saveCareerAuditPrompt(event)}>
+            <div className="admin-card-heading"><div><span className="admin-label">CAREER AUDIT INSTRUCTIONS</span><h2>Set the guidance for AI feedback.</h2></div></div>
+            <p>This additional instruction is combined with the Career Audit’s safety and accuracy rules, then used with the applicant’s answers. Keep applicant answers as the source of their personal facts.</p>
+            <label>Administrator pre-prompt
+              <textarea value={settingsForm.career_audit_prompt} onChange={(event) => setSettingsForm((current) => ({ ...current, career_audit_prompt: event.target.value }))} rows={8} maxLength={8000} placeholder="Add guidance on how the AI should assess preparation and shape practical feedback…" />
+              <small>{settingsForm.career_audit_prompt.length}/8000 characters</small>
+            </label>
+            <button className="button button-dark" disabled={busy}>{busy ? "Saving…" : "Save Career Audit prompt"}</button>
+          </form>
+        </> : null}
         {section === "" ? <section className="dashboard-view"><div className="dashboard-welcome"><div><span className="admin-label">WEDNESDAY · YOUR EDITORIAL OVERVIEW</span><h2>Let’s make something <em>worth keeping.</em></h2><p>Shape the practical next steps your readers are looking for.</p></div><Link href="/dashboard/ai" className="button button-dark">✦ Start an AI draft</Link></div><div className="dashboard-stats">{[["All content", overview?.contentCount ?? 0, "Across every content type"], ["Published", overview?.publishedCount ?? 0, "Live on your website"], ["Reference files", overview?.documentCount ?? 0, "Available to AI drafts"], ["Members", overview?.userCount ?? 0, "Private workspaces"]].map(([label, count, detail]) => <div className="stat-card" key={label}><span>{label}</span><strong>{count}</strong><small>{detail}</small></div>)}</div><div className="admin-grid dashboard-lower"><div className="admin-card"><div className="admin-card-heading"><div><span className="admin-label">RECENT CONTENT</span><h2>In the studio</h2></div><Link href="/dashboard/content" className="admin-inline-link">Open library ↗</Link></div>{contents.slice(0, 5).map((item) => <article className="cms-item compact" key={item.id}><div><span className={`status-dot status-${item.status}`} />{item.status} · {item.type}</div><h3>{item.title}</h3></article>)}{!contents.length && <p className="empty-note">Your first useful story can start here.</p>}</div><div className="dashboard-side"><div className="admin-card quick-actions"><span className="admin-label">QUICK START</span><Link href="/dashboard/content">＋ Write manually</Link><Link href="/dashboard/ai">✦ Prompt the AI</Link><Link href="/dashboard/files">↥ Upload a source file</Link></div><div className="admin-card privacy-admin"><span className="admin-label">A NOTE ON TRUST</span><p>AI creates drafts, not facts. Review every detail before you publish.</p><Link href="/privacy">Privacy details ↗</Link></div></div></div></section> : null}
       </div>
     </main>

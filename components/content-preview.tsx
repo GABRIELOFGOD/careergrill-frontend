@@ -1,6 +1,7 @@
 import type { ContentType } from "@/lib/site-data";
 import RichContent from "@/components/rich-content";
 import JobDetailPreview from "@/components/job-detail/job-detail-preview";
+import ScholarshipDetailView from "@/components/scholarship-detail/scholarship-detail-view";
 
 const labels: Partial<Record<ContentType, string>> = {
   job: "Job opportunity",
@@ -49,20 +50,26 @@ export default function ContentPreview({ type, title, excerpt, body, category, d
       {type === "job" ? (
         <JobDetailPreview title={title} body={body} data={data} sourceUrl={sourceUrl} />
       ) : type === "scholarship" ? (
-        <div className="content-preview-opportunity">
-          {category && <span className="content-preview-kicker">{category}</span>}
-          <span className="content-preview-opportunity-label">{data.award_badge || "Scholarship"}</span>
-          <h2>{title || "Your opportunity title"}</h2>
-          <p>{excerpt || "Your short introduction will appear here."}</p>
-          {fields.length > 0 && <div className="content-preview-pills">{fields.slice(0, 4).map(([label, value]) => <span key={label}>{label}: {value}</span>)}</div>}
-          {sourceUrl && <span className="content-preview-action">Visit official source ↗</span>}
-        </div>
+        <ScholarshipDetailView
+          preview
+          item={{
+            id: "preview",
+            type: "scholarship",
+            title,
+            slug: "",
+            excerpt,
+            body,
+            category,
+            tags: [],
+            status: "published",
+            expires_at: null,
+            source_url: sourceUrl || null,
+            data,
+          }}
+        />
       ) : (
         <RichContent value={body || "<p>Your formatted content will appear here. Add headings, images, links, quotes, and tables in the editor.</p>"} className="content-preview-body" />
       )}
-      {type === "scholarship"
-        ? <RichContent value={body || "<p>Additional details you add to the editor will appear here.</p>"} className="content-preview-body" />
-        : null}
       {sourceUrl && type !== "job" && type !== "scholarship" && <span className="content-preview-action">View related source ↗</span>}
     </article>
   </div>;

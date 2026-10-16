@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { apiRequest, apiUrl } from "@/lib/api";
 import { contentHref, sampleContent, type ContentType, type SiteContent } from "@/lib/site-data";
 import { Eyebrow } from "@/components/site-shell";
@@ -84,39 +84,156 @@ function PageIntro({ eyebrow, title, text, side }: { eyebrow: string; title: Rea
   return <section className="page-intro content-wrap"><div><Eyebrow>{eyebrow}</Eyebrow><h1>{title}</h1><p className="lead">{text}</p></div>{side}</section>;
 }
 
+const resourceTopics = ["All resources", "Graduate admissions", "Scholarships", "Career documents", "Fellowships", "MBA applications"];
+const resourceFormats = ["All formats", "Checklist", "Worksheet", "Template"];
+
 function ResourceCard({ item }: { item: SiteContent }) {
-  return <article className="resource-card"><div className="resource-card-visual"><div className="visual-title">CAREERGRILL / FIELD NOTES</div><div className="visual-list"><span>01</span><b>{item.category}</b><span>02</span><b>{String(item.data.format ?? "Toolkit")}</b><span>03</span><b>Start with what you know.</b></div><div className="visual-mark">c.</div></div><div className="resource-card-body"><span className="card-kicker">{String(item.data.format ?? "Resource")} · {item.category}</span><h3><Link href={`/resources/${item.slug}`}>{item.title}</Link></h3><p>{item.excerpt}</p><Link className="text-link" href={`/resources/${item.slug}`}>Open {String(item.data.format ?? "resource").toLowerCase()} ↗</Link></div></article>;
+  const format = String(item.data.format ?? "Worksheet");
+  const icon = format === "Checklist" ? "✓" : format === "Template" ? "¶" : "↗";
+  const action = format === "Checklist" ? "Open checklist" : format === "Template" ? "Open template" : "Open worksheet";
+  return <article className="resource-library-card">
+    <div className="resource-library-card-top"><span className="resource-library-icon" aria-hidden="true">{icon}</span><span className="resource-library-format">{format}</span></div>
+    <span className="resource-library-category">{item.category}</span>
+    <h3><Link href={`/resources/${item.slug}`}>{item.title}</Link></h3>
+    <p>{item.excerpt}</p>
+    <Link className="resource-library-action" href={`/resources/${item.slug}`}>{action}<span aria-hidden="true">↗</span></Link>
+  </article>;
 }
 
 export function ResourcePage() {
   const fallback = sampleContent.filter((item) => item.type === "resource");
   const { items: resources, isLive } = usePublicContent("resource", fallback);
-  return <><PageIntro eyebrow="The Careergrill resource library" title={<>Practical help for<br /><em>your next application.</em></>} text="Checklists, worksheets and planning tools for scholarships, graduate admissions and the documents you need next." side={<div className="intro-side"><Eyebrow>Know what needs attention first</Eyebrow><h2>Start with your direction.</h2><p>The Career Audit helps you assess your job search or study application before you start drafting.</p><Link className="text-link" href="/career-audit">Start your Career Audit ↗</Link></div>} /><section className="content-wrap listing-area"><div className="topic-chips">{["All resources", "Graduate admissions", "Scholarships", "Career documents", "Fellowships", "MBA applications"].map((topic, index) => <a className={index === 0 ? "topic-chip active" : "topic-chip"} key={topic} href="#resources">{topic}</a>)}</div><div className="section-heading"><div><Eyebrow>Find the tool you need</Eyebrow><h2>Open a starter tool. Keep an editable copy.</h2></div><Link className="text-link" href="/blog">Prefer an article? Read application guides ↗</Link></div>{!isLive && <p className="sample-notice">Sample resources are shown until the live content service is connected.</p>}<div className="resource-cards">{resources.map((item) => <ResourceCard key={item.id} item={item} />)}</div><div className="notice-box"><strong>Your work stays in your browser unless you choose to save it.</strong><p>Sign in to save application notes and opportunities to your Careergrill workspace.</p><Link href="/signin" className="text-link">Sign in to your workspace ↗</Link></div></section></>;
-}
+  const [topic, setTopic] = useState("All resources");
+  const [query, setQuery] = useState("");
+  const [format, setFormat] = useState("All formats");
+  const visibleResources = useMemo(() => resources.filter((item) => {
+    const matchesTopic = topic === "All resources" || item.category.toLowerCase() === topic.toLowerCase();
+    const matchesFormat = format === "All formats" || String(item.data.format ?? "").toLowerCase() === format.toLowerCase();
+    const searchText = `${item.title} ${item.category} ${item.excerpt} ${item.tags.join(" ")}`.toLowerCase();
+    return matchesTopic && matchesFormat && (!query.trim() || searchText.includes(query.trim().toLowerCase()));
+  }), [resources, topic, query, format]);
 
-const articleSamples = sampleContent.filter((item) => item.type === "article");
-export function BlogPage({ articleSlug }: { articleSlug?: string }) {
-  const { items: articles } = usePublicContent("article", articleSamples);
-  if (articleSlug) {
-    const item = articles.find((article) => article.slug === articleSlug) ?? articles[0] ?? articleSamples[0];
-    return <article className="article-page content-wrap"><Link className="text-link" href="/blog">← Back to the blog</Link><div className="article-head"><Eyebrow>{item.category} / Application notes</Eyebrow><h1>{item.title}</h1><p className="lead">{item.excerpt}</p><span className="muted-copy">By Careergrill · Practical application notes</span></div><div className="article-cover"><span>CAREERGRILL / APPLICATION NOTES</span><strong>Start with<br />what you can explain.</strong><b>c.</b></div><RichContent value={item.body} className="article-body" /><div className="notice-box"><strong>Working on your own application?</strong><p>Keep a checklist beside your draft or discuss a feedback scope with Careergrill.</p><Link href="/resources" className="text-link">Explore the resource library ↗</Link></div></article>;
-  }
-  return <><PageIntro eyebrow="The Careergrill blog" title={<>Useful advice.<br /><em>A clearer next move.</em></>} text="Read about the decisions and documents behind a stronger application, from choosing funding to explaining your work." side={<div className="intro-side"><Eyebrow>Put the advice to work</Eyebrow><h2>Keep a checklist beside your draft.</h2><p>Open a worksheet or checklist as you read.</p><Link className="text-link" href="/resources">Open the resource library ↗</Link></div>} /><section className="content-wrap listing-area"><div className="featured-article"><div><Eyebrow>Featured reading · {articles[0]?.category ?? "Careergrill"}</Eyebrow><h2>{articles[0] ? <Link href={`/blog/${articles[0].slug}`}>{articles[0].title}</Link> : "Useful advice for your next application."}</h2><p>{articles[0]?.excerpt ?? "Check back soon for practical application notes."}</p>{articles[0] && <Link className="text-link" href={`/blog/${articles[0].slug}`}>Read the article ↗</Link>}</div><div className="article-art"><span>APPLICATION NOTES</span><b>01 / PLAN<br />02 / WRITE<br />03 / REVIEW</b><strong>c.</strong></div></div><div className="section-heading"><div><Eyebrow>More from the blog</Eyebrow><h2>Make the next decision clearer.</h2></div></div><div className="article-grid">{articles.map((item) => <article className="article-card" key={item.id}><span className="card-kicker">{item.category} · {String(item.data.reading_minutes ?? 4)} min read</span><h3><Link href={`/blog/${item.slug}`}>{item.title}</Link></h3><p>{item.excerpt}</p><Link href={`/blog/${item.slug}`} className="text-link">Read article ↗</Link></article>)}</div></section></>;
-}
-
-export function ServicesPage() {
-  const { items } = usePublicContent("service", []);
-  return <><PageIntro eyebrow="Careergrill services" title={<>Get support for<br /><em>the step you’re taking.</em></>} text="Choose a direction, make sense of your experience, or get feedback on a draft. Find the support that fits where you are now." side={<div className="intro-side"><Eyebrow>A useful starting point</Eyebrow><h2>Bring your goal.<br />We’ll work from there.</h2><ol><li>Your intended role or opportunity</li><li>The experience you can build on</li><li>Your draft, questions and deadline</li></ol></div>} /><section className="content-wrap listing-area"><div className="section-heading"><div><Eyebrow>Choose your support</Eyebrow><h2>What needs attention?</h2><p>Each service starts with your goal and the evidence you have to work with.</p></div></div><div className="service-grid">{[
-    ["01 / Graduate applications", "Admissions, scholarships and fellowships", "Career Audit and application planning · SOP and motivation letter review · Programme fit and funding discussion"],
-    ["02 / Career documents", "CVs, LinkedIn and interviews", "CV review and rewriting · LinkedIn headline and profile · Interview preparation"],
-    ["03 / MBA applications", "Strategy, essays and interviews", "Application direction · Essay development and review · Interview preparation"],
-  ].map(([number, title, body]) => <article className="service-detail-card" key={number}><span className="card-kicker">{number}</span><h2>{title}</h2><p>{body}</p><Link className="text-link" href="/consultation">Discuss this support ↗</Link></article>)}
-    {items.map((item) => <article className="service-detail-card" key={item.id}><span className="card-kicker">{item.category || "Careergrill support"}</span><h2><Link href={contentHref("service", item.slug)}>{item.title}</Link></h2>{item.excerpt ? <p>{item.excerpt}</p> : <RichContent value={item.body} className="service-rich-content" />}<Link className="text-link" href={contentHref("service", item.slug)}>Read service details ↗</Link><Link className="text-link" href="/consultation">Discuss this support ↗</Link></article>)}</div><div className="notice-box"><strong>Agree the scope before you commit.</strong><p>Careergrill is led by Sanni Alausa-Issa. Discuss your goal, deliverables and fee before you commit to paid support.</p><Link href="/consultation?mode=call" className="button button-dark">Book a free 15-minute call ↗</Link></div></section></>;
+  return <>
+    <section className="resource-library-hero">
+      <div className="content-wrap resource-library-hero-inner">
+        <div>
+          <Eyebrow>The Careergrill resource library</Eyebrow>
+          <h1>Practical help for<br /><em>your next application.</em></h1>
+          <p>Checklists, worksheets and planning tools for scholarships, graduate admissions and the documents you need next.</p>
+        </div>
+        <aside className="resource-library-audit">
+          <h2>Know what needs attention first.</h2>
+          <p>The AI Career Audit helps you assess your job search or study application before you start drafting.</p>
+          <Link className="button button-dark" href="/career-audit">Start an AI Career Audit</Link>
+        </aside>
+      </div>
+    </section>
+    <section className="content-wrap resource-library">
+      <div className="resource-library-topics" aria-label="Filter resources by topic">
+        {resourceTopics.map((item) => <button type="button" key={item} className={`resource-library-chip${topic === item ? " active" : ""}`} aria-pressed={topic === item} onClick={() => setTopic(item)}>{item}</button>)}
+      </div>
+      <div className="resource-library-heading">
+        <div><h2>Find the tool you need.</h2><p>Answer the questions here, then download your notes as a text file or print a PDF. Keep a copy before closing this tab.</p></div>
+        <Link href="/blog">Prefer an article? Read application guides</Link>
+      </div>
+      <div className="resource-library-filters">
+        <label className="resource-library-search">Search resources
+          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try motivation letter, CV or funding" />
+        </label>
+        <label>Topic
+          <select value={topic} onChange={(event) => setTopic(event.target.value)}>
+            {resourceTopics.map((item) => <option key={item} value={item}>{item === "All resources" ? "All topics" : item}</option>)}
+          </select>
+        </label>
+        <label>Format
+          <select value={format} onChange={(event) => setFormat(event.target.value)}>
+            {resourceFormats.map((item) => <option key={item} value={item}>{item === "All formats" ? "All formats" : item}</option>)}
+          </select>
+        </label>
+        <button type="button" onClick={() => { setTopic("All resources"); setFormat("All formats"); setQuery(""); }}>Reset</button>
+      </div>
+      {!isLive && <p className="sample-notice">Showing the saved resource library while the live content service is unavailable.</p>}
+      <p className="resource-library-count" aria-live="polite">{visibleResources.length} {visibleResources.length === 1 ? "resource" : "resources"}</p>
+      {visibleResources.length > 0
+        ? <div className="resource-library-grid">{visibleResources.map((item) => <ResourceCard key={item.id} item={item} />)}</div>
+        : <p className="resource-library-empty">No resources match those filters. Try another topic or reset your search.</p>}
+      <aside className="resource-library-cta">
+        <div><h2>Read the advice behind the tool.</h2><p>Explore practical articles on application writing, funding decisions and explaining your experience.</p></div>
+        <Link className="button button-outline" href="/blog">Explore the Careergrill blog</Link>
+      </aside>
+    </section>
+  </>;
 }
 
 export function FeedbackPage() {
   const { items } = usePublicContent("testimonial", []);
-  return <><PageIntro eyebrow="Client feedback" title={<>The support behind<br /><em>the next step.</em></>} text="Read an attributed client’s account of statement support and writing that reflects their own experience." /><section className="content-wrap listing-area"><div className="testimonial-panel"><Eyebrow>Published client feedback</Eyebrow><h2>Keeping your experience in your statement.</h2><blockquote>“…would walk you through writing your statement of purpose (SOP) in a perfectly fine manner that reflects not only your journey but who you are!”</blockquote><div className="testimonial-person"><span>HA</span><div><strong>Hameedah Abdrasheed-Babatunde</strong><p>On statement of purpose support</p></div></div><a href="https://careergrill.com" className="text-link" target="_blank" rel="noreferrer">Read the full feedback on Careergrill’s current website ↗</a></div>{items.map((item) => <article className="testimonial-panel" key={item.id}><Eyebrow>{item.category || "Client feedback"}</Eyebrow><RichContent value={item.body} className="feedback-rich-content" /><div className="testimonial-person"><span>{String(item.data.initials ?? "CG")}</span><div><strong><Link href={contentHref("testimonial", item.slug)}>{String(item.data.author ?? item.title)}</Link></strong><p>{String(item.data.attribution ?? item.excerpt)}</p></div></div><Link className="text-link" href={contentHref("testimonial", item.slug)}>Read full feedback ↗</Link></article>)}<div className="action-strip"><div><Eyebrow>Your experience / your voice</Eyebrow><h2>Choose the evidence. Explain the connection. Keep it yours.</h2><p>The story belongs to the applicant.</p></div><Link className="button button-dark" href="/consultation">Discuss your application ↗</Link></div></section></>;
+
+  return <>
+    <section className="client-feedback-hero">
+      <div className="content-wrap client-feedback-hero-inner">
+        <Eyebrow>Client feedback</Eyebrow>
+        <h1>A client’s experience<br />with Careergrill.</h1>
+        <p>A client’s experience with Careergrill’s statement of purpose support.</p>
+      </div>
+    </section>
+    <main className="content-wrap client-feedback-content">
+      <article className="client-testimonial-card">
+        <div className="client-testimonial-copy">
+          <Eyebrow>Statement of purpose support</Eyebrow>
+          <h2>Keeping your experience<br />in your statement.</h2>
+          <blockquote>“…would walk you through writing your statement of purpose (SOP) in a perfectly fine manner that reflects not only your journey but who you are!”</blockquote>
+          <div className="client-testimonial-author">
+            <span aria-hidden="true">HA</span>
+            <div><strong>Hameedah Abdrasheed-Babatunde</strong><small>On statement of purpose support</small></div>
+          </div>
+          <a className="client-testimonial-source" href="https://careergrill.com" target="_blank" rel="noreferrer">Read the original testimonial ↗</a>
+        </div>
+        <div className="client-testimonial-art" role="img" aria-label="Careergrill application review: Choose the evidence, explain the connection, keep it yours.">
+          <span className="client-testimonial-art-label">Application review</span>
+          <div className="client-testimonial-paper">
+            <small>Your experience / your voice</small>
+            <div><span>01</span><strong>Choose the evidence.</strong></div>
+            <div><span>02</span><strong>Explain the connection.</strong></div>
+            <div><span>03</span><strong>Keep it yours.</strong></div>
+            <em>The story belongs to the applicant.</em>
+          </div>
+          <b className="client-testimonial-mark" aria-hidden="true">c<span>.</span></b>
+        </div>
+      </article>
+      {items.map((item) => (
+        <article className="client-testimonial-card client-testimonial-card-cms" key={item.id}>
+          <div className="client-testimonial-copy">
+            <Eyebrow>{item.category || "Client feedback"}</Eyebrow>
+            <h2>{item.title}</h2>
+            <RichContent value={item.body} className="client-testimonial-rich-quote" />
+            <div className="client-testimonial-author">
+              <span aria-hidden="true">{String(item.data.initials ?? "CG")}</span>
+              <div>
+                <strong>{String(item.data.author ?? item.title)}</strong>
+                <small>{String(item.data.attribution ?? item.excerpt)}</small>
+              </div>
+            </div>
+            <Link className="client-testimonial-source" href={contentHref("testimonial", item.slug)}>Read this client story ↗</Link>
+          </div>
+          <div className="client-testimonial-art" aria-hidden="true">
+            <span className="client-testimonial-art-label">Application review</span>
+            <div className="client-testimonial-paper">
+              <small>Your experience / your voice</small>
+              <div><span>01</span><strong>Choose the evidence.</strong></div>
+              <div><span>02</span><strong>Explain the connection.</strong></div>
+              <div><span>03</span><strong>Keep it yours.</strong></div>
+              <em>The story belongs to the applicant.</em>
+            </div>
+            <b className="client-testimonial-mark">c<span>.</span></b>
+          </div>
+        </article>
+      ))}
+      <aside className="client-feedback-cta">
+        <div><h2>Want to discuss your own application?</h2><p>Bring your goal and the part of the process you need help with.</p></div>
+        <Link className="button button-dark" href="/consultation?mode=call">Book a free 15-minute call</Link>
+      </aside>
+    </main>
+  </>;
 }
 
 export function FaqPage() {
@@ -133,19 +250,84 @@ export function PrivacyPage() {
   return <><PageIntro eyebrow="Your information" title={<>What you share.<br /><em>Where it is used.</em></>} text="Privacy information for the Careergrill website." /><article className="content-wrap privacy-content"><p className="muted-copy">Updated 15 October 2026</p><h2>Your account and saved work</h2><p>Signing in connects your account identifier, name and email to your saved workspace. Careergrill stores saved opportunities, application notes and preferences so you can return to them. Workspace access is scoped to your signed-in account.</p><h2>AI-generated content</h2><p>When an administrator asks an AI provider to draft website content, only the prompt and any selected reference documents are sent to that provider. API credentials stay encrypted on the server and are never included in the website response. Generated content remains a draft until an administrator reviews and publishes it.</p><p>If you choose to submit an audit, your answers are sent to the configured AI provider to generate feedback. Do not include passwords, identification numbers, contact details or confidential third-party information.</p><h2>Drafts and resource worksheets</h2><p>Unsaved worksheet notes use this browser tab’s session storage. They do not automatically sync across devices. Download or save work you want to keep.</p><h2>Enquiries and consultations</h2><p>A prepared enquiry remains in this tab until you copy it or choose to send it through email or WhatsApp. Those services and any linked booking provider process information under their own policies.</p><h2>Keeping and deleting information</h2><p>Saved work remains available in your account until you remove it or request its removal. You can delete individual saved opportunities and audits in your workspace. To request removal of account-linked information or ask about a copy, email <a href="mailto:info@careergrill.com">info@careergrill.com</a>. Hosting providers may retain operational records or backups under their own retention arrangements.</p><h2>Questions</h2><p>Contact <a href="mailto:info@careergrill.com">info@careergrill.com</a> about how your information is used or to report a concern.</p></article></>;
 }
 
-export function ConsultationPage() {
+export function ConsultationPage({ mode }: { mode: "enquiry" | "call" }) {
   const [message, setMessage] = useState("");
   const [service, setService] = useState("Help me choose the right support");
   const [goal, setGoal] = useState("");
+  const [process, setProcess] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [details, setDetails] = useState("");
   const [prepared, setPrepared] = useState("");
   function prepare(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const text = `Hello Careergrill,\n\nI would like to discuss: ${service}.\nMy goal or next step: ${goal}\n\nA little more context:\n${details}\n\nPlease let me know the next step.`;
+    const text = `Hello Careergrill,\n\nI would like to discuss: ${service}.\nMy goal or next step: ${goal}${process ? `\nWhere I am in the process: ${process}` : ""}${deadline ? `\nMy deadline: ${deadline}` : ""}\n\nA little more context:\n${details || "No additional context yet."}\n\nPlease let me know the next step.`;
     setPrepared(text);
     setMessage("Your brief is ready. Choose when and how to send it.");
   }
-  return <><PageIntro eyebrow="Discuss your support" title={<>Tell us what<br /><em>you need.</em></>} text="Share your goal and the help you want. Review the message, edit it if needed, then copy it or send it through WhatsApp or email." side={<div className="intro-side"><Eyebrow>Useful context</Eyebrow><h2>What to have ready.</h2><p>The goal you are working towards, what you have tried and any draft or deadline you want to discuss.</p></div>} /><section className="content-wrap consultation-layout"><form className="form-card" onSubmit={prepare}><Eyebrow>Prepare your enquiry</Eyebrow><label>Service<select value={service} onChange={(event) => setService(event.target.value)}>{["Help me choose the right support", "Statement review · Admissions", "Application strategy · Admissions", "CV review & rewrite · Career documents", "LinkedIn support · Career documents", "Interview preparation · Career documents", "Application direction · MBA", "Essay development & review · MBA"].map((item) => <option key={item}>{item}</option>)}</select></label><label>Your goal or next step<input value={goal} onChange={(event) => setGoal(event.target.value)} required placeholder="What are you working towards?" /></label><label>Where are you in the process?<select><option>I’m exploring my options</option><option>I’m starting an application</option><option>I have a draft</option><option>I have an interview invitation</option></select></label><label>Your deadline, if known<input type="date" /></label><label>What would you like us to know?<textarea value={details} onChange={(event) => setDetails(event.target.value)} rows={5} placeholder="Two or three sentences about the help you want are enough." /></label><button className="button button-dark">Prepare message</button><p className="muted-copy">Your brief is kept in this tab. You choose when to copy or send it.</p></form><div className="enquiry-preview"><Eyebrow>What happens next</Eyebrow><h2>Start with the question you have.</h2><p>A free 15-minute call is a chance to discuss your goal and decide whether a longer review is useful.</p>{message && <p className="inline-notice" role="status">{message}</p>}{prepared && <div className="prepared-message"><textarea value={prepared} onChange={(event) => setPrepared(event.target.value)} rows={12} aria-label="Prepared enquiry message" /><a className="button button-dark" href={`mailto:info@careergrill.com?subject=${encodeURIComponent("Careergrill enquiry")}&body=${encodeURIComponent(prepared)}`}>Open in email ↗</a><a className="text-link" href={`https://wa.me/2348168097950?text=${encodeURIComponent(prepared)}`} target="_blank" rel="noreferrer">Send with WhatsApp ↗</a></div>}</div></section></>;
+  const callMessage = encodeURIComponent("Hello Careergrill, I would like to arrange a free 15-minute consultation. Please let me know what times are available.");
+  const services = ["Help me choose the right support", "Statement review · Admissions", "Application strategy · Admissions", "CV review & rewrite · Career documents", "LinkedIn support · Career documents", "Interview preparation · Career documents", "Application direction · MBA", "Essay development & review · MBA"];
+  return <section className={`consultation-page content-wrap${mode === "call" ? " consultation-call-mode" : ""}`}>
+    <Link className="consultation-back-link" href="/services">All services</Link>
+    <header className="consultation-heading">
+      <Eyebrow>{mode === "call" ? "Free 15-minute consultation" : "Discuss your support"}</Eyebrow>
+      <h1>{mode === "call" ? "Talk through your next step." : "Tell us what you need."}</h1>
+      <p>{mode === "call"
+        ? "Bring your goal, deadline and the part you want help with. Use this short call to decide what support makes sense."
+        : "Share your goal and the help you want. Review the message, edit it if needed, then copy it or send it through WhatsApp or email."}</p>
+    </header>
+    {mode === "call" ? <div className="consultation-call-grid">
+      <article className="consultation-card">
+        <h2>A focused first conversation</h2>
+        <ul>
+          <li>Explain your job search or application goal</li>
+          <li>Ask about the support available</li>
+          <li>Agree a next step, if you want one</li>
+        </ul>
+        <p>The 15-minute consultation is free. A full document review or ongoing application support is quoted separately before work begins.</p>
+        <a className="button button-dark" href={`https://wa.me/2348168097950?text=${callMessage}`} target="_blank" rel="noreferrer">Arrange a time on WhatsApp</a>
+        <small>Message Careergrill to ask about available times.</small>
+      </article>
+      <article className="consultation-card">
+        <h2>Prefer to arrange it by message?</h2>
+        <p>Send your goal and a few suitable times. Careergrill will confirm availability.</p>
+        <a className="button button-outline" href={`https://wa.me/2348168097950?text=${callMessage}`} target="_blank" rel="noreferrer">Ask about a free call on WhatsApp</a>
+        <Link className="consultation-text-link" href="/consultation">Draft a service enquiry</Link>
+      </article>
+    </div> : <div className="consultation-enquiry-grid">
+      <form className="form-card consultation-form" onSubmit={prepare}>
+        <h2>Draft your enquiry</h2>
+        <label>Service<select value={service} onChange={(event) => setService(event.target.value)}>{services.map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label>Your goal or next step<input value={goal} onChange={(event) => setGoal(event.target.value)} required placeholder="For example, choosing between a job search and postgraduate study" /></label>
+        <label>Where are you in the process? (optional)<select value={process} onChange={(event) => setProcess(event.target.value)}><option value="">Choose if helpful</option><option>I’m exploring my options</option><option>I’m starting an application</option><option>I have a draft</option><option>I have an interview invitation</option></select></label>
+        <label>Your deadline, if known<input type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} /></label>
+        <label>What would you like us to know?<textarea value={details} onChange={(event) => setDetails(event.target.value)} rows={4} placeholder="For example: I have a 500-word draft, but I’m struggling to connect my experience to the selection criteria." /></label>
+        <small>Two or three sentences about the help you want are enough.</small>
+        <button className="button button-dark">Create message</button>
+        {message && <p className="inline-notice" role="status">{message}</p>}
+        {prepared && <div className="prepared-message">
+          <textarea value={prepared} onChange={(event) => setPrepared(event.target.value)} rows={9} aria-label="Prepared enquiry message" />
+          <a className="button button-dark" href={`mailto:info@careergrill.com?subject=${encodeURIComponent("Careergrill enquiry")}&body=${encodeURIComponent(prepared)}`}>Open in email ↗</a>
+          <a className="text-link" href={`https://wa.me/2348168097950?text=${encodeURIComponent(prepared)}`} target="_blank" rel="noreferrer">Send with WhatsApp ↗</a>
+        </div>}
+        <p className="muted-copy">Your enquiry draft stays in this tab. Copy it before leaving if you want to keep it.</p>
+      </form>
+      <aside className="consultation-card consultation-context">
+        <Eyebrow>Useful context</Eyebrow>
+        <h2>What to have ready.</h2>
+        <ul>
+          <li>The goal you are working towards</li>
+          <li>What you have already tried or prepared</li>
+          <li>Any opportunity or deadline you have in mind</li>
+          <li>The part of the process you want help with</li>
+        </ul>
+        <p>You can make an enquiry before everything is ready. Agree the work, fee and delivery date before paid support begins. Share document files privately once you have agreed the process.</p>
+        <h3>Prefer to talk?</h3>
+        <p>Arrange a free 15-minute consultation to discuss your goal.</p>
+        <Link className="button button-outline" href="/consultation?mode=call">Arrange a free 15-minute call</Link>
+        <small>Opening a message or booking page does not send an enquiry or book an appointment.</small>
+      </aside>
+    </div>}
+  </section>;
 }
 
 export function AuthPage() {
@@ -224,14 +406,17 @@ export function WorkspacePage({ view = "scholarships" }: { view?: "scholarships"
   const [items, setItems] = useState<SavedItem[]>([]);
   const [audits, setAudits] = useState<{ id: string; goal: string; feedback: string; created_at: string }[]>([]);
   const [notice, setNotice] = useState("Loading your saved workspace…");
+  const [stage, setStage] = useState("all");
   useEffect(() => {
-    Promise.all([
-      apiRequest<{ items: SavedItem[] }>("/saved"),
-      apiRequest<{ items: { id: string; goal: string; feedback: string; created_at: string }[] }>("/audits"),
-    ])
-      .then(([saved, auditHistory]) => { setItems(saved.items); setAudits(auditHistory.items); setNotice(""); })
-      .catch((error: unknown) => setNotice(error instanceof Error ? error.message : "We could not load your workspace."));
-  }, []);
+    setNotice("Loading your saved workspace…");
+    setStage("all");
+    const request = view === "audits"
+      ? apiRequest<{ items: { id: string; goal: string; feedback: string; created_at: string }[] }>("/audits")
+        .then(({ items: auditHistory }) => { setAudits(auditHistory); setNotice(""); })
+      : apiRequest<{ items: SavedItem[] }>("/saved")
+        .then(({ items: savedItems }) => { setItems(savedItems); setNotice(""); });
+    request.catch((error: unknown) => setNotice(error instanceof Error ? error.message : "We could not load your workspace."));
+  }, [view]);
   async function remove(id: string) {
     try {
       await apiRequest(`/saved/${id}`, { method: "DELETE" });
@@ -259,75 +444,128 @@ export function WorkspacePage({ view = "scholarships" }: { view?: "scholarships"
   const savedItems = items.filter(({ content_items: content }) => view === "jobs"
     ? content.type === "job"
     : view === "scholarships" && content.type === "scholarship");
-  const title = view === "jobs" ? "Your job search." : "Your application workspace.";
   const isAuditView = view === "audits";
+  const filteredItems = stage === "all" ? savedItems : savedItems.filter((item) => item.status === stage);
+  const isLoading = notice === "Loading your saved workspace…";
+  const title = isAuditView ? "My Career Audits" : view === "jobs" ? "My saved jobs" : "My saved scholarships.";
   return (
-    <>
-    <PageIntro
-      eyebrow="Your application workspace"
-      title={<>{title}<br /><em>A plan you can follow.</em></>}
-      text={isAuditView
-        ? "Return to your saved Career Audit feedback and review the next steps you planned."
-        : "Return to saved opportunities, record your preparation and keep track of applications."}
-      side={<div className="intro-side"><Eyebrow>Private to your account</Eyebrow><p>Notes, checks and application stages stay in your signed-in workspace.</p><Link className="text-link" href="/career-audit">Start a new audit ↗</Link></div>}
-    />
-    <section className="content-wrap listing-area">
-      {!isAuditView && <div className="workspace-tabs">
-        <Link className={view === "scholarships" ? "active" : ""} href="/workspace">Scholarships</Link>
-        <Link className={view === "jobs" ? "active" : ""} href="/workspace/jobs">Jobs</Link>
-      </div>}
-      {notice && <div className="inline-notice" role="status">{notice} {notice.toLowerCase().includes("sign in") && <Link href="/signin">Sign in ↗</Link>}</div>}
-      {!isAuditView && <>
+    <main className="workspace-page">
+      <div className="workspace-container">
+        <header className="workspace-header">
+          <div>
+            <Eyebrow>Your application workspace</Eyebrow>
+            <h1 className={view === "scholarships" ? "workspace-title-scholarships" : undefined}>{title}</h1>
+            <p>{isAuditView
+              ? "Return to your saved Career Audit feedback and review the next steps you planned."
+              : view === "jobs"
+                ? "Return to saved roles, record your preparation and keep track of applications."
+                : "Track what you want to pursue and what needs doing next."}</p>
+          </div>
+          {!isAuditView && <Link className="button button-outline" href={view === "jobs" ? "/jobs" : "/scholarships"}>{view === "jobs" ? "Find more jobs" : "Explore more scholarships"}</Link>}
+        </header>
+        {!isAuditView && <nav className="workspace-tabs" aria-label="Saved opportunities">
+          <Link className={view === "scholarships" ? "active" : ""} aria-current={view === "scholarships" ? "page" : undefined} href="/workspace">Scholarships</Link>
+          <Link className={view === "jobs" ? "active" : ""} aria-current={view === "jobs" ? "page" : undefined} href="/workspace/jobs">Jobs</Link>
+        </nav>}
+        {!isAuditView && <div className="workspace-banner">
+          <p>{view === "jobs"
+            ? <><strong>Saved to your account.</strong> Notes, checks and application stages are private to your signed-in workspace. Update stages yourself after applying through the employer.</>
+            : <><strong>Your saved workspace.</strong> Opportunities, notes and progress are saved to your account. Submit applications through the official provider. Enable expiry reminders on saved listings to get an email before they close.</>}</p>
+          {view === "scholarships" && <Link href="/my-audits">Open my audit history</Link>}
+        </div>}
+        {notice && !isLoading && <div className="inline-notice workspace-error" role="status">{notice} {notice.toLowerCase().includes("sign in") && <Link href="/signin">Sign in ↗</Link>}</div>}
+        {!isAuditView && <>
         <div className="workspace-stats">
           <div><strong>{savedItems.length}</strong><span>Saved {view === "jobs" ? "jobs" : "opportunities"}</span></div>
           <div><strong>{savedItems.filter((item) => item.status === "preparing").length}</strong><span>In preparation</span></div>
           <div><strong>{savedItems.filter((item) => item.status === "submitted").length}</strong><span>Applied / interviewing</span></div>
         </div>
-        <div className="section-heading">
-          <div><Eyebrow>My shortlist</Eyebrow><h2>Your saved {view === "jobs" ? "roles" : "opportunities"}</h2><p>Turn on email reminders for verified addresses. We’ll email you before listings expire.</p></div>
-          <Link className="button button-outline" href={view === "jobs" ? "/jobs" : "/scholarships"}>Find more {view === "jobs" ? "jobs" : "scholarships"} ↗</Link>
+        <div className={`workspace-content${view === "scholarships" ? " has-guidance" : ""}`}>
+          <section className="workspace-primary" aria-labelledby="workspace-list-title">
+            <div className="workspace-list-heading">
+              <h2 id="workspace-list-title">{view === "jobs" ? "Your saved roles" : "Your shortlist"}</h2>
+              <label>{view === "jobs" ? "Stage" : "Status"}<select value={stage} onChange={(event) => setStage(event.target.value)}><option value="all">All stages</option><option value="saved">Saved</option><option value="preparing">In preparation</option><option value="submitted">Applied / interviewing</option></select></label>
+            </div>
+            {isLoading ? <p className="workspace-loading" role="status">{view === "jobs" ? "Loading your saved jobs…" : "Loading the scholarship directory…"}</p>
+              : filteredItems.length > 0 ? <div className="workspace-saved-list">{filteredItems.map((item) => <WorkspaceSavedCard
+                key={item.id}
+                item={item}
+                onRemove={() => void remove(item.id)}
+                onUpdate={(values) => void updateSaved(item.id, values)}
+              />)}</div> : !notice && view === "scholarships" ? <div className="workspace-empty">
+                <h3>Your shortlist starts here.</h3>
+                <p>{stage === "all" ? "Save a scholarship from the discovery page to start tracking your preparation." : "No saved opportunities match this stage."}</p>
+                {stage === "all" && <Link className="button button-dark" href="/scholarships">Find a scholarship</Link>}
+              </div> : !notice && stage !== "all" && <p className="workspace-no-matches">No saved jobs match this stage.</p>}
+          </section>
+          {view === "scholarships" && <aside className="workspace-guidance">
+            <Eyebrow>Before you apply</Eyebrow>
+            <h2>A listing is the start of the research.</h2>
+            <ul>
+              <li>Confirm official eligibility and the current cycle.</li>
+              <li>Check what the funding actually covers.</li>
+              <li>Record scholarship and admission deadlines separately.</li>
+              <li>Work backwards from your deadline.</li>
+            </ul>
+            <Link className="button button-dark" href="/career-audit">Start an AI Career Audit</Link>
+            <Link className="workspace-support-link" href="/consultation">Discuss adviser support</Link>
+            <div className="workspace-reminder-help">
+              <h3>Need a reminder?</h3>
+              <p>Enable an expiry reminder on a saved opportunity and we’ll email you before the listing closes.</p>
+            </div>
+          </aside>}
         </div>
-        {savedItems.length > 0 ? <div className="listing-grid">{savedItems.map((item) => <article className="listing-card" key={item.id}>
-          <div className="listing-meta"><span className="pill">{item.status}</span><span>{item.content_items.category}</span></div>
-          <h3>{item.content_items.title}</h3><p>{item.content_items.excerpt}</p>
-          {item.content_items.deleted_at && <p className="muted-copy">This listing was withdrawn and is no longer available on the website.</p>}
-          <label className="workspace-status">Application stage<select value={item.status} onChange={(event) => void updateSaved(item.id, { status: event.target.value })}><option value="saved">Saved</option><option value="preparing">Preparing</option><option value="submitted">Submitted</option></select></label>
-          {!item.content_items.deleted_at && <label className="workspace-reminder"><input type="checkbox" checked={item.reminder_enabled} onChange={(event) => void updateSaved(item.id, { reminder_enabled: event.target.checked })} /> Email me before this listing expires</label>}
-          {!item.content_items.deleted_at && item.content_items.expires_at && <p className="muted-copy">Expires {new Date(item.content_items.expires_at).toLocaleDateString()}</p>}
-          <button className="text-button" onClick={() => void remove(item.id)}>Remove from workspace</button>
-        </article>)}</div> : !notice && <div className="empty-state">
-          <h3>Your shortlist starts here.</h3><p>Save a {view === "jobs" ? "job" : "scholarship or resource"} to track your preparation.</p>
-          <Link className="button button-dark" href={view === "jobs" ? "/jobs" : "/scholarships"}>Find {view === "jobs" ? "a job" : "a scholarship"} ↗</Link>
-        </div>}
       </>}
-      {(isAuditView || view === "scholarships") && <>
-        <div className="section-heading audit-history-heading"><div><Eyebrow>Your audit history</Eyebrow><h2>Plans you have saved</h2></div></div>
-        {audits.length ? <div className="audit-history">{audits.map((audit) => <article key={audit.id}>
+      {isAuditView && (audits.length ? <div className="audit-history">{audits.map((audit) => <article key={audit.id}>
           <div><span className="pill">{audit.goal}</span><small>{new Date(audit.created_at).toLocaleDateString()}</small></div>
           <p>{audit.feedback.slice(0, 500)}{audit.feedback.length > 500 ? "…" : ""}</p>
           <button className="text-button" onClick={() => void deleteAudit(audit.id)}>Delete audit</button>
-        </article>)}</div> : !notice && <p className="muted-copy">Your audit history will appear here after you generate feedback.</p>}
-      </>}
-      {!isAuditView && <div className="notice-box"><Eyebrow>Before you apply</Eyebrow><h2>A listing is the start of the research.</h2><p>Confirm official eligibility and the current cycle. Check what the funding covers and record deadlines separately.</p></div>}
-    </section>
-    </>
+        </article>)}</div> : !notice && <p className="muted-copy">Your audit history will appear here after you generate feedback.</p>)}
+      </div>
+    </main>
   );
+}
+
+function WorkspaceSavedCard({ item, onRemove, onUpdate }: {
+  item: SavedItem;
+  onRemove: () => void;
+  onUpdate: (values: { status?: string; reminder_enabled?: boolean }) => void;
+}) {
+  return <article className="listing-card">
+    <div className="listing-meta"><span className="pill">{item.status}</span><span>{item.content_items.category}</span></div>
+    <h3>{item.content_items.title}</h3><p>{item.content_items.excerpt}</p>
+    {item.content_items.deleted_at && <p className="muted-copy">This listing was withdrawn and is no longer available on the website.</p>}
+    <label className="workspace-status">Application stage<select value={item.status} onChange={(event) => onUpdate({ status: event.target.value })}><option value="saved">Saved</option><option value="preparing">Preparing</option><option value="submitted">Submitted</option></select></label>
+    {!item.content_items.deleted_at && <label className="workspace-reminder"><input type="checkbox" checked={item.reminder_enabled} onChange={(event) => onUpdate({ reminder_enabled: event.target.checked })} /> Email me before this listing expires</label>}
+    {!item.content_items.deleted_at && item.content_items.expires_at && <p className="muted-copy">Expires {new Date(item.content_items.expires_at).toLocaleDateString()}</p>}
+    <button className="text-button" onClick={onRemove}>Remove from workspace</button>
+  </article>;
 }
 
 export function AuditPage() {
   const [step, setStep] = useState(1);
-  const [goal, setGoal] = useState("Study, scholarships & fellowships");
-  const [answers, setAnswers] = useState({ direction: "", experience: "", evidence: "", concerns: "" });
+  const [goal, setGoal] = useState("A master's degree");
+  const [answers, setAnswers] = useState({ direction: "", experience: "", evidence: "", concerns: "", target: "", timeline: "" });
   const [notice, setNotice] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [auditAvailable, setAuditAvailable] = useState<boolean | null>(null);
   useEffect(() => {
     const timer = window.setTimeout(() => {
+    const requestedGoal = new URLSearchParams(window.location.search).get("goal");
+    const goalByQuery: Record<string, string> = {
+      job: "Job search",
+      scholarship: "A scholarship",
+      fellowship: "A fellowship",
+      phd: "A PhD",
+      masters: "A master's degree",
+    };
+    if (requestedGoal && goalByQuery[requestedGoal]) setGoal(goalByQuery[requestedGoal]);
     const draft = sessionStorage.getItem("careergrill-audit-draft");
     if (draft) {
       try {
-        const parsed = JSON.parse(draft) as { goal?: string; answers?: typeof answers; step?: number };
+        const parsed = JSON.parse(draft) as { goal?: string; answers?: Partial<typeof answers>; step?: number };
         if (parsed.goal) setGoal(parsed.goal);
-        if (parsed.answers) setAnswers(parsed.answers);
+        if (parsed.answers) setAnswers((current) => ({ ...current, ...parsed.answers }));
         if (parsed.step) setStep(parsed.step);
       } catch {
         sessionStorage.removeItem("careergrill-audit-draft");
@@ -336,12 +574,33 @@ export function AuditPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
-  function saveDraft() {
-    sessionStorage.setItem("careergrill-audit-draft", JSON.stringify({ goal, answers, step }));
+  useEffect(() => {
+    apiRequest<{ available: boolean }>("/audits/availability")
+      .then(({ available }) => setAuditAvailable(available))
+      .catch(() => setAuditAvailable(false));
+  }, []);
+  function saveDraft(savedStep = step) {
+    sessionStorage.setItem("careergrill-audit-draft", JSON.stringify({ goal, answers, step: savedStep }));
     setNotice("Draft saved in this browser tab.");
+  }
+  function continueAudit() {
+    const requiredAnswer = step === 1 ? answers.direction : answers.experience;
+    if (!requiredAnswer.trim()) {
+      setNotice(step === 1
+        ? "Add your goal to continue. You can save an incomplete draft and return later."
+        : "Add your relevant experience to continue. You can save an incomplete draft and return later.");
+      return;
+    }
+    saveDraft(step + 1);
+    setStep((current) => current + 1);
+    setNotice("");
   }
   async function generate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!auditAvailable) {
+      setNotice("AI feedback is temporarily unavailable. You can still save your answers and return later.");
+      return;
+    }
     setNotice("Preparing your feedback…");
     try {
       const result = await apiRequest<{ feedback: string }>("/audits/feedback", { method: "POST", body: JSON.stringify({ goal, answers, consent: true }) });
@@ -351,7 +610,97 @@ export function AuditPage() {
       setNotice(error instanceof Error ? error.message : "We could not prepare feedback.");
     }
   }
-  return <div className="audit-page content-wrap"><Link className="text-link" href="/">← Back to Careergrill</Link><div className="audit-intro"><Eyebrow>AI Career Audit</Eyebrow><h1>Where are you now?<br /><em>What comes next?</em></h1><p className="lead">Choose job search or a study application. Share your goal and experience to get feedback on your preparation, gaps and next steps.</p><div className="value-points"><span>Your goal</span><span>Your evidence</span><span>Your next move</span></div><p className="muted-copy">Your work stays yours. Unsaved drafts stay in this browser tab. Sign in to save and generate feedback.</p></div><form className="audit-form" onSubmit={(event) => void generate(event)}><div className="step-label">STEP {step} OF 3</div>{step === 1 ? <><h2>What are you working towards?</h2><p>Pick one direction. The next questions will follow your choice.</p><div className="choice-grid">{["Job search", "Study, scholarships & fellowships"].map((item) => <button type="button" key={item} className={`choice-card ${goal === item ? "selected" : ""}`} onClick={() => setGoal(item)}><strong>{item}</strong><span>{item === "Job search" ? "Find a role or improve my job search." : "A master’s degree, PhD, scholarship or fellowship."}</span></button>)}</div><label>What would you like this opportunity to help you do?<textarea value={answers.direction} onChange={(event) => setAnswers({ ...answers, direction: event.target.value })} rows={4} required placeholder="A specific goal makes the feedback more useful." /></label></> : step === 2 ? <><h2>What experience can you build on?</h2><p>Share only what you are comfortable including. Leave out contact and identification details.</p><label>Your relevant experience<textarea value={answers.experience} onChange={(event) => setAnswers({ ...answers, experience: event.target.value })} rows={5} required placeholder="Work, study, volunteering, projects, responsibilities…" /></label><label>What evidence can you point to?<textarea value={answers.evidence} onChange={(event) => setAnswers({ ...answers, evidence: event.target.value })} rows={4} placeholder="Examples, outcomes, feedback or work you have completed." /></label></> : <><h2>What needs attention?</h2><p>What feels uncertain or would you most like help with?</p><label>Your questions or concerns<textarea value={answers.concerns} onChange={(event) => setAnswers({ ...answers, concerns: event.target.value })} rows={5} placeholder="Deadlines, missing experience, programme fit, interviews…" /></label><label className="consent-row"><input type="checkbox" required /> I understand my answers will be sent to the configured AI provider to generate feedback.</label></>}{notice && <p className="inline-notice" role="status">{notice} {notice.toLowerCase().includes("sign in") && <Link href="/signin">Sign in ↗</Link>}</p>}<div className="form-actions"><button type="button" className="button button-outline" onClick={saveDraft}>Save draft</button>{step > 1 && <button type="button" className="button button-outline" onClick={() => setStep(step - 1)}>Back</button>}{step < 3 ? <button type="button" className="button button-dark" onClick={() => { saveDraft(); setStep(step + 1); }}>Continue</button> : <button className="button button-dark">Generate AI feedback</button>}</div><small>AI feedback has daily usage limits. You can save an incomplete draft and return to it.</small></form>{feedback && <section className="feedback-result"><Eyebrow>Your application direction</Eyebrow><h2>A practical next-step plan.</h2><div>{feedback.split("\n").map((line, index) => <p key={index}>{line}</p>)}</div></section>}<div className="audit-foot"><button className="text-button" onClick={() => { sessionStorage.removeItem("careergrill-audit-draft"); setAnswers({ direction: "", experience: "", evidence: "", concerns: "" }); setFeedback(""); setStep(1); setNotice("This tab’s draft has been cleared."); }}>Clear this tab’s draft</button><Link href="/faq">Questions about the audit? ↗</Link></div></div>;
+  const goalChoices = [
+    { label: "Find a role or improve my job search", goal: "Job search", detail: "Role direction, application evidence and interview preparation." },
+    { label: "A master's degree", goal: "A master's degree", detail: "Academic preparation and programme fit." },
+    { label: "A PhD", goal: "A PhD", detail: "Research direction and supervision." },
+    { label: "A scholarship", goal: "A scholarship", detail: "Study goals and funding preparation." },
+    { label: "A fellowship", goal: "A fellowship", detail: "Professional development and contribution." },
+  ];
+  return <div className="audit-page content-wrap">
+    <aside className="audit-sidebar">
+      <Link className="audit-back-link" href="/">← Back to Careergrill</Link>
+      <div className="audit-intro">
+        <Eyebrow>AI Career Audit</Eyebrow>
+        <h1>Review your preparation with AI.</h1>
+        <p>Tell us about the role, course, scholarship or fellowship you’re considering and one example of your experience. Get feedback on the details you share, questions to resolve and actions to take.</p>
+      </div>
+      <ol className="audit-progress">
+        {["Your goal", "Your experience", "Your target and timeline"].map((label, index) => (
+          <li className={step === index + 1 ? "active" : step > index + 1 ? "complete" : ""} key={label}>
+            <span>{index + 1}</span>{label}
+          </li>
+        ))}
+      </ol>
+      <div className="audit-saving-note">
+        <strong>Saving your audit</strong>
+        <p>Start without an account. This tab keeps your draft through reloads. Sign in to save it and generate feedback. Closing the tab clears unsaved work.</p>
+        <Link href="/privacy">How your information is used</Link>
+        <Link href="/workspace/audits">See an example action plan</Link>
+      </div>
+    </aside>
+    <form className="audit-form" onSubmit={(event) => void generate(event)}>
+      {auditAvailable === false && <div className="audit-unavailable" role="status"><strong>AI feedback is temporarily unavailable.</strong><p>You can still complete and save your audit. Your answers will stay in this tab until the service is available.</p></div>}
+      {auditAvailable === null && <p className="audit-availability-check" role="status">Checking AI feedback availability…</p>}
+      <p className="audit-required-note">Fields marked “Needed for AI feedback” are required to generate an assessment. You can save an incomplete draft.</p>
+      <div className="step-label">STEP {step} OF 3</div>
+      {step === 1 ? <>
+        <h2>What are you working towards?</h2>
+        <p>Pick one direction. The next questions will follow your choice.</p>
+        <fieldset className="audit-goal-options">
+          <legend className="visually-hidden">Choose your goal</legend>
+          <p className="audit-choice-heading">Job search</p>
+          <button type="button" className={`choice-card audit-goal-card${goal === goalChoices[0].goal ? " selected" : ""}`} aria-pressed={goal === goalChoices[0].goal} onClick={() => setGoal(goalChoices[0].goal)}>
+            <span className="choice-radio" aria-hidden="true" /><span><strong>{goalChoices[0].label}</strong><small>{goalChoices[0].detail}</small></span>
+          </button>
+          <p className="audit-choice-heading">Study, scholarships &amp; fellowships</p>
+          <div className="audit-study-options">
+            {goalChoices.slice(1).map((item) => <button type="button" key={item.goal} className={`choice-card audit-goal-card${goal === item.goal ? " selected" : ""}`} aria-pressed={goal === item.goal} onClick={() => setGoal(item.goal)}>
+              <span className="choice-radio" aria-hidden="true" /><span><strong>{item.label}</strong><small>{item.detail}</small></span>
+            </button>)}
+          </div>
+        </fieldset>
+        <label><small>Needed for AI feedback</small>What would you like this opportunity to help you do?
+          <textarea value={answers.direction} onChange={(event) => setAnswers({ ...answers, direction: event.target.value })} rows={4} required placeholder="Explain the change you want to make and why it matters to you." />
+        </label>
+        <p className="audit-field-hint">A specific goal makes the feedback more useful.</p>
+      </> : step === 2 ? <>
+        <h2>What experience can you build on?</h2>
+        <p>Share only what you are comfortable including. Leave out contact and identification details.</p>
+        <label><small>Needed for AI feedback</small>Your relevant experience
+          <textarea value={answers.experience} onChange={(event) => setAnswers({ ...answers, experience: event.target.value })} rows={6} required placeholder="Work, study, volunteering, projects or responsibilities…" />
+        </label>
+        <label>What evidence can you point to?
+          <textarea value={answers.evidence} onChange={(event) => setAnswers({ ...answers, evidence: event.target.value })} rows={4} placeholder="Examples, outcomes, feedback or work you have completed." />
+        </label>
+      </> : <>
+        <h2>What is your target and timeline?</h2>
+        <p>Share the next milestone and any deadlines or uncertainties you want the assessment to consider.</p>
+        <label>Your target
+          <textarea value={answers.target} onChange={(event) => setAnswers({ ...answers, target: event.target.value })} rows={3} placeholder="What would a useful next step look like?" />
+        </label>
+        <label>Your timeline
+          <input value={answers.timeline} onChange={(event) => setAnswers({ ...answers, timeline: event.target.value })} maxLength={1000} placeholder="For example, the application deadline or interview date." />
+        </label>
+        <label>Your questions or concerns
+          <textarea value={answers.concerns} onChange={(event) => setAnswers({ ...answers, concerns: event.target.value })} rows={4} placeholder="Deadlines, missing experience, programme fit, interviews…" />
+        </label>
+        <label className="consent-row"><input type="checkbox" required /> I understand my answers will be sent to the configured AI provider to generate feedback.</label>
+      </>}
+      {notice && <p className="inline-notice" role="status">{notice} {notice.toLowerCase().includes("sign in") && <Link href="/signin">Sign in ↗</Link>}</p>}
+      <p className="audit-save-reminder">Draft kept in this tab. Sign in to save it to your account.</p>
+      <div className="form-actions">
+        {step > 1 && <button type="button" className="button button-outline" onClick={() => setStep(step - 1)}>Back</button>}
+        <button type="button" className="button button-outline" onClick={saveDraft}>Save draft</button>
+        {step < 3
+          ? <button type="button" className="button button-dark" onClick={continueAudit}>Continue</button>
+          : <button className="button button-dark" disabled={auditAvailable !== true}>Generate AI feedback</button>}
+      </div>
+      <small>Up to five generation attempts per account each day, subject to service capacity. Failed attempts count. Reading saved feedback does not use an attempt.</small>
+      <div className="audit-foot"><button type="button" className="text-button" onClick={() => { sessionStorage.removeItem("careergrill-audit-draft"); setAnswers({ direction: "", experience: "", evidence: "", concerns: "", target: "", timeline: "" }); setFeedback(""); setStep(1); setNotice("This tab’s draft has been cleared."); }}>Clear this tab’s draft</button><Link href="/faq">Questions about the audit? ↗</Link></div>
+    </form>
+    {feedback && <section className="feedback-result"><Eyebrow>Your application direction</Eyebrow><h2>A practical next-step plan.</h2><div>{feedback.split("\n").map((line, index) => <p key={index}>{line}</p>)}</div></section>}
+  </div>;
 }
 
 export function ContentDetail({ slug, expectedType }: { slug: string; expectedType?: ContentType }) {

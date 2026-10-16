@@ -1,5 +1,5 @@
-import { BlogPage } from "@/components/public-site";
+import { BlogIndexPage as BlogIndexView } from "@/components/blog-pages";
 
 export default function BlogIndexPage() {
-  return <BlogPage />;
+  return <BlogIndexView />;
 }

@@ -1,11 +1,11 @@
 import { Suspense } from "react";
-import { ContentDetail } from "@/components/public-site";
+import ScholarshipDetailPage from "@/components/scholarship-detail/scholarship-detail-page";
 
 async function ScholarshipContent({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  return <ContentDetail slug={slug} expectedType="scholarship" />;
+  return <ScholarshipDetailPage slug={slug} />;
 }
 
 export default function ScholarshipPage({ params }: { params: Promise<{ slug: string }> }) {
-  return <Suspense fallback={<div className="simple-page content-wrap">Loading scholarship…</div>}><ScholarshipContent params={params} /></Suspense>;
+  return <Suspense fallback={<div className="scholarship-detail-page">Loading scholarship…</div>}><ScholarshipContent params={params} /></Suspense>;
 }
