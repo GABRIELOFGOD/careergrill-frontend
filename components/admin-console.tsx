@@ -22,6 +22,7 @@ interface AdminFile {
 }
 interface Settings {
   ai_provider: AiProvider;
+  ai_model: string;
   ai_models: Record<AiProvider, string>;
   career_audit_prompt: string;
   storage_provider: "supabase" | "cloudinary";
@@ -571,26 +572,26 @@ export default function AdminConsole() {
     } finally {
       setBusy(false);
     }
+  }
 
-    async function saveCareerAuditPrompt(event: FormEvent<HTMLFormElement>) {
-      event.preventDefault();
-      setBusy(true);
-      setNotice("");
-      try {
-        await apiRequest("/admin/settings", {
-          method: "PUT",
-          body: JSON.stringify({ career_audit_prompt: settingsForm.career_audit_prompt }),
-        });
-        setSettings((current) => current
-          ? { ...current, career_audit_prompt: settingsForm.career_audit_prompt.trim() }
-          : current);
-        setSettingsForm((current) => ({ ...current, career_audit_prompt: current.career_audit_prompt.trim() }));
-        setNotice("Career Audit instructions saved.");
-      } catch (error) {
-        setNotice(error instanceof Error ? error.message : "Could not save Career Audit instructions.");
-      } finally {
-        setBusy(false);
-      }
+  async function saveCareerAuditPrompt(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setNotice("");
+    try {
+      await apiRequest("/admin/settings", {
+        method: "PUT",
+        body: JSON.stringify({ career_audit_prompt: settingsForm.career_audit_prompt }),
+      });
+      setSettings((current) => current
+        ? { ...current, career_audit_prompt: settingsForm.career_audit_prompt.trim() }
+        : current);
+      setSettingsForm((current) => ({ ...current, career_audit_prompt: current.career_audit_prompt.trim() }));
+      setNotice("Career Audit instructions saved.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save Career Audit instructions.");
+    } finally {
+      setBusy(false);
     }
   }
 

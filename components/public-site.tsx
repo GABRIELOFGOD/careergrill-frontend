@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { apiRequest, apiUrl } from "@/lib/api";
 import { contentHref, sampleContent, type ContentType, type SiteContent } from "@/lib/site-data";
@@ -250,7 +251,9 @@ export function PrivacyPage() {
   return <><PageIntro eyebrow="Your information" title={<>What you share.<br /><em>Where it is used.</em></>} text="Privacy information for the Careergrill website." /><article className="content-wrap privacy-content"><p className="muted-copy">Updated 15 October 2026</p><h2>Your account and saved work</h2><p>Signing in connects your account identifier, name and email to your saved workspace. Careergrill stores saved opportunities, application notes and preferences so you can return to them. Workspace access is scoped to your signed-in account.</p><h2>AI-generated content</h2><p>When an administrator asks an AI provider to draft website content, only the prompt and any selected reference documents are sent to that provider. API credentials stay encrypted on the server and are never included in the website response. Generated content remains a draft until an administrator reviews and publishes it.</p><p>If you choose to submit an audit, your answers are sent to the configured AI provider to generate feedback. Do not include passwords, identification numbers, contact details or confidential third-party information.</p><h2>Drafts and resource worksheets</h2><p>Unsaved worksheet notes use this browser tab’s session storage. They do not automatically sync across devices. Download or save work you want to keep.</p><h2>Enquiries and consultations</h2><p>A prepared enquiry remains in this tab until you copy it or choose to send it through email or WhatsApp. Those services and any linked booking provider process information under their own policies.</p><h2>Keeping and deleting information</h2><p>Saved work remains available in your account until you remove it or request its removal. You can delete individual saved opportunities and audits in your workspace. To request removal of account-linked information or ask about a copy, email <a href="mailto:info@careergrill.com">info@careergrill.com</a>. Hosting providers may retain operational records or backups under their own retention arrangements.</p><h2>Questions</h2><p>Contact <a href="mailto:info@careergrill.com">info@careergrill.com</a> about how your information is used or to report a concern.</p></article></>;
 }
 
-export function ConsultationPage({ mode }: { mode: "enquiry" | "call" }) {
+export function ConsultationPage() {
+  const searchParams = useSearchParams();
+  const mode = searchParams.get("mode") === "call" ? "call" : "enquiry";
   const [message, setMessage] = useState("");
   const [service, setService] = useState("Help me choose the right support");
   const [goal, setGoal] = useState("");
@@ -691,7 +694,7 @@ export function AuditPage() {
       <p className="audit-save-reminder">Draft kept in this tab. Sign in to save it to your account.</p>
       <div className="form-actions">
         {step > 1 && <button type="button" className="button button-outline" onClick={() => setStep(step - 1)}>Back</button>}
-        <button type="button" className="button button-outline" onClick={saveDraft}>Save draft</button>
+        <button type="button" className="button button-outline" onClick={() => saveDraft()}>Save draft</button>
         {step < 3
           ? <button type="button" className="button button-dark" onClick={continueAudit}>Continue</button>
           : <button className="button button-dark" disabled={auditAvailable !== true}>Generate AI feedback</button>}
