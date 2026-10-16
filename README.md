@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Careergrill website
 
-## Getting Started
+Next.js frontend for the Careergrill public website and content-management dashboard.
 
-First, run the development server:
+## Structure
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- `app/(site)/`: public website route group. The group layout owns the public header, sign-in strip, footer, and shared site frame; the group name does not appear in URLs.
+- Public content uses type-specific detail routes: `/job/{slug}`, `/scholarship/{slug}`, `/blog/{slug}`, `/resources/{slug}`, `/services/{slug}`, `/faq/{slug}`, and `/client-feedback/{slug}`.
+- `app/dashboard/`: private dashboard pages. Its shared layout keeps the authenticated content studio mounted while navigating between `/dashboard/jobs`, `/dashboard/scholarships`, `/dashboard/blog`, `/dashboard/resources`, `/dashboard/services`, `/dashboard/faqs`, `/dashboard/feedback`, overview, AI studio, files, and settings.
+- Dashboard pages require an authenticated account with the `admin` role. The API enforces authorization independently on every admin endpoint; frontend checks are for access flow and user feedback, not the security boundary.
+- `app/layout.tsx`: root document, fonts, global styles, and metadata.
+- `components/site-shell.tsx`: public header/footer and shared site chrome.
+- `components/job-detail/`: focused job-page header, facts, application, eligibility, preparation, source, and preview components. The location/eligibility callout and application instructions are editable from the dashboard.
+- `components/public-site.tsx`, `components/admin-console.tsx`, and `components/rich-text-editor.tsx`: interactive site and dashboard views, including a Word-style editor for formatting, links, tables, quotes, and uploaded inline images. Content previews show the reader-facing layout before manual or AI-generated content is published.
+- `lib/api.ts`: centralized browser HTTP client. It builds API URLs, sends credentials, sets JSON headers only for JSON request bodies, and reports structured API errors. The frontend talks to the separately deployable API over HTTP and does not import backend code.
+- Tailwind CSS 4 is configured in `app/globals.css`; its theme tokens match the prototype cream, ink-purple, and orange palette.
+- `.env.example`: optional API origin configuration for local development and deployment.
+- `/signin` supports email/password accounts and redirects Google sign-in through the backend OAuth flow.
+- Legacy `/admin` URLs permanently redirect to the `/dashboard` route family.
+
+## Local development
+
+1. Follow the Supabase and backend setup in [`../backend/README.md`](../backend/README.md).
+2. Optionally set `NEXT_PUBLIC_API_URL` to the API origin. It defaults to `http://localhost:4000`.
+3. Install dependencies and start the website:
+
+   ```sh
+   npm install
+   npm run dev
+   ```
+
+Visit `http://localhost:3000`. The API's `FRONTEND_URL` must match the website origin. If the API is unavailable, public listings fall back to sample preview content; account, CMS, and persistence features require a configured API and Supabase project.
+
+## Build and lint
+
+```sh
+npm run lint
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For production, set `NEXT_PUBLIC_API_URL` to the HTTPS API origin at build time and deploy the frontend with the same origin configured as the backend's `FRONTEND_URL`. Prefer frontend and API hostnames on the same site (for example, `www.example.com` and `api.example.com`) so browsers reliably send the secure session cookie.
