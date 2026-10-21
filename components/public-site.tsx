@@ -9,6 +9,8 @@ import { contentHref, sampleContent, type ContentType, type SiteContent } from "
 import { Eyebrow } from "@/components/site-shell";
 import RichContent from "@/components/rich-content";
 import { cn } from "@/lib/utils";
+import PageHeader from "./ui/page-header";
+import Container from "./container";
 
 export function HomePage() {
   const resources = sampleContent.filter((item) => item.type === "resource");
@@ -167,7 +169,11 @@ export function ResourcePage() {
         : <p className="border border-brand-line bg-white p-5 text-sm text-brand-muted">No resources match those filters. Try another topic or reset your search.</p>}
       <aside className="mt-7 flex items-center justify-between gap-5 rounded bg-brand-sage p-5 max-md:flex-col max-md:items-start">
         <div><h2 className="mb-1 text-xl font-bold">Read the advice behind the tool.</h2><p className="mb-0 text-sm text-brand-muted">Explore practical articles on application writing, funding decisions and explaining your experience.</p></div>
-        <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/blog">Explore the Careergrill blog</Link>
+        <Link href="/blog">
+          <Button variant="outline">
+            Explore the Careergrill blog
+          </Button>
+        </Link>
       </aside>
     </section>
   </>;
@@ -177,14 +183,12 @@ export function FeedbackPage() {
   const { items } = usePublicContent("testimonial", []);
 
   return <>
-    <section className="bg-brand-sage">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-8 py-8">
-        <Eyebrow>Client feedback</Eyebrow>
-        <h1 className="mb-3 text-5xl tracking-tight">A client’s experience<br />with Careergrill.</h1>
-        <p className="mb-0 text-base text-brand-muted">A client’s experience with Careergrill’s statement of purpose support.</p>
-      </div>
-    </section>
-    <main className="mx-auto w-full max-w-7xl px-4 sm:px-8 space-y-5 py-7">
+    <PageHeader
+      header="client feedback"
+      title="A client’s experience with Careergrill."
+      description="A client’s experience with Careergrill’s statement of purpose support."
+    />
+    <Container className="space-y-7 py-10 flex flex-col gap-10">
       <article className="grid overflow-hidden rounded border border-brand-line bg-white md:grid-cols-2">
         <div className="p-6 md:p-8">
           <Eyebrow>Statement of purpose support</Eyebrow>
@@ -194,7 +198,7 @@ export function FeedbackPage() {
             <span className="grid size-10 place-items-center rounded-full bg-brand-blue text-sm font-bold text-brand-purple" aria-hidden="true">HA</span>
             <div className="grid"><strong>Hameedah Abdrasheed-Babatunde</strong><small className="text-sm text-brand-muted">On statement of purpose support</small></div>
           </div>
-          <a className="text-sm font-semibold text-brand-purple hover:underline" href="https://careergrill.com" target="_blank" rel="noreferrer">Read the original testimonial ↗</a>
+          <a className="text-xs text-brand-purple underline" href="https://careergrill.com" target="_blank" rel="noreferrer">Read the original testimonial ↗</a>
         </div>
         <div className="relative grid min-h-72 place-items-center bg-brand-blue p-6" role="img" aria-label="Careergrill application review: Choose the evidence, explain the connection, keep it yours.">
           <span className="absolute left-5 top-5 text-xs font-semibold uppercase tracking-widest text-brand-purple">Application review</span>
@@ -236,7 +240,7 @@ export function FeedbackPage() {
         <div><h2 className="mb-1 text-xl font-bold">Want to discuss your own application?</h2><p className="mb-0 text-sm text-brand-muted">Bring your goal and the part of the process you need help with.</p></div>
         <Link className={buttonVariants({ variant: "brand", size: "sm" })} href="/consultation?mode=call">Book a free 15-minute call</Link>
       </aside>
-    </main>
+    </Container>
   </>;
 }
 
@@ -481,48 +485,48 @@ export function WorkspacePage({ view = "scholarships" }: { view?: "scholarships"
         </div>}
         {notice && !isLoading && <div className="mb-4 rounded border border-brand-line bg-brand-blue p-3 text-sm" role="status">{notice} {notice.toLowerCase().includes("sign in") && <Link className="font-semibold text-brand-purple hover:underline" href="/signin">Sign in ↗</Link>}</div>}
         {!isAuditView && <>
-        <div className="mb-5 grid gap-3 sm:grid-cols-3">
-          <div className="rounded border border-brand-line bg-white p-4"><strong className="block font-display text-3xl">{savedItems.length}</strong><span className="text-sm text-brand-muted">Saved {view === "jobs" ? "jobs" : "opportunities"}</span></div>
-          <div className="rounded border border-brand-line bg-white p-4"><strong className="block font-display text-3xl">{savedItems.filter((item) => item.status === "preparing").length}</strong><span className="text-sm text-brand-muted">In preparation</span></div>
-          <div className="rounded border border-brand-line bg-white p-4"><strong className="block font-display text-3xl">{savedItems.filter((item) => item.status === "submitted").length}</strong><span className="text-sm text-brand-muted">Applied / interviewing</span></div>
-        </div>
-        <div className={cn("grid items-start gap-5", view === "scholarships" && "lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,.65fr)]")}>
-          <section className="rounded border border-brand-line bg-white p-5" aria-labelledby="workspace-list-title">
-            <div className="mb-4 flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-start">
-              <h2 className="mb-0 text-2xl" id="workspace-list-title">{view === "jobs" ? "Your saved roles" : "Your shortlist"}</h2>
-              <label className="grid gap-1 text-xs font-semibold">{view === "jobs" ? "Stage" : "Status"}<select className="min-h-9 rounded border border-brand-line bg-white px-2 text-sm font-normal" value={stage} onChange={(event) => setStage(event.target.value)}><option value="all">All stages</option><option value="saved">Saved</option><option value="preparing">In preparation</option><option value="submitted">Applied / interviewing</option></select></label>
-            </div>
-            {isLoading ? <p className="text-sm text-brand-muted" role="status">{view === "jobs" ? "Loading your saved jobs…" : "Loading the scholarship directory…"}</p>
-              : filteredItems.length > 0 ? <div className="grid gap-3">{filteredItems.map((item) => <WorkspaceSavedCard
-                key={item.id}
-                item={item}
-                onRemove={() => void remove(item.id)}
-                onUpdate={(values) => void updateSaved(item.id, values)}
-              />)}</div> : !notice && view === "scholarships" ? <div className="grid justify-items-start gap-3 rounded bg-brand-sage p-5">
-                <h3 className="mb-0 text-xl font-bold">Your shortlist starts here.</h3>
-                <p className="mb-0 text-sm text-brand-muted">{stage === "all" ? "Save a scholarship from the discovery page to start tracking your preparation." : "No saved opportunities match this stage."}</p>
-                {stage === "all" && <Link className={buttonVariants({ variant: "brand", size: "sm" })} href="/scholarships">Find a scholarship</Link>}
-              </div> : !notice && stage !== "all" && <p className="text-sm text-brand-muted">No saved jobs match this stage.</p>}
-          </section>
-          {view === "scholarships" && <aside className="grid content-start gap-3 rounded border border-brand-line bg-brand-blue p-5">
-            <Eyebrow>Before you apply</Eyebrow>
-            <h2 className="mb-0 text-xl">A listing is the start of the research.</h2>
-            <ul className="mb-0 list-disc space-y-2 pl-5 text-sm leading-relaxed text-brand-muted">
-              <li>Confirm official eligibility and the current cycle.</li>
-              <li>Check what the funding actually covers.</li>
-              <li>Record scholarship and admission deadlines separately.</li>
-              <li>Work backwards from your deadline.</li>
-            </ul>
-            <Link className={buttonVariants({ variant: "brand", size: "sm" })} href="/career-audit">Start an AI Career Audit</Link>
-            <Link className="text-sm font-semibold text-brand-purple hover:underline" href="/consultation">Discuss adviser support</Link>
-            <div className="mt-2 border-t border-brand-line pt-3">
-              <h3 className="mb-1 text-base font-bold">Need a reminder?</h3>
-              <p className="mb-0 text-sm text-brand-muted">Enable an expiry reminder on a saved opportunity and we’ll email you before the listing closes.</p>
-            </div>
-          </aside>}
-        </div>
-      </>}
-      {isAuditView && (audits.length ? <div className="grid gap-3">{audits.map((audit) => <article className="rounded border border-brand-line bg-white p-4" key={audit.id}>
+          <div className="mb-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded border border-brand-line bg-white p-4"><strong className="block font-display text-3xl">{savedItems.length}</strong><span className="text-sm text-brand-muted">Saved {view === "jobs" ? "jobs" : "opportunities"}</span></div>
+            <div className="rounded border border-brand-line bg-white p-4"><strong className="block font-display text-3xl">{savedItems.filter((item) => item.status === "preparing").length}</strong><span className="text-sm text-brand-muted">In preparation</span></div>
+            <div className="rounded border border-brand-line bg-white p-4"><strong className="block font-display text-3xl">{savedItems.filter((item) => item.status === "submitted").length}</strong><span className="text-sm text-brand-muted">Applied / interviewing</span></div>
+          </div>
+          <div className={cn("grid items-start gap-5", view === "scholarships" && "lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,.65fr)]")}>
+            <section className="rounded p-5" aria-labelledby="workspace-list-title">
+              <div className="mb-4 flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-start">
+                <h2 className="mb-0 text-2xl" id="workspace-list-title">{view === "jobs" ? "Your saved roles" : "Your shortlist"}</h2>
+                <label className="grid gap-1 text-xs font-semibold">{view === "jobs" ? "Stage" : "Status"}<select className="min-h-9 rounded border border-brand-line bg-white px-2 text-sm font-normal" value={stage} onChange={(event) => setStage(event.target.value)}><option value="all">All stages</option><option value="saved">Saved</option><option value="preparing">In preparation</option><option value="submitted">Applied / interviewing</option></select></label>
+              </div>
+              {isLoading ? <p className="text-sm text-brand-muted" role="status">{view === "jobs" ? "Loading your saved jobs…" : "Loading the scholarship directory…"}</p>
+                : filteredItems.length > 0 ? <div className="grid gap-3">{filteredItems.map((item) => <WorkspaceSavedCard
+                  key={item.id}
+                  item={item}
+                  onRemove={() => void remove(item.id)}
+                  onUpdate={(values) => void updateSaved(item.id, values)}
+                />)}</div> : !notice && view === "scholarships" ? <div className="flex flex-col gap-5 justify-center items-center rounded border-dashed border border-gray-500 py-8 px-12">
+                  <h3 className="mb-0 text-xl font-bold">Your shortlist starts here.</h3>
+                  <p className="mb-0 text-sm text-brand-muted">{stage === "all" ? "Save a scholarship from the discovery page to start tracking your preparation." : "No saved opportunities match this stage."}</p>
+                  {stage === "all" && <Link className={buttonVariants({ variant: "brand", size: "sm" })} href="/scholarships">Find a scholarship</Link>}
+                </div> : !notice && stage !== "all" && <p className="text-sm text-brand-muted">No saved jobs match this stage.</p>}
+            </section>
+            {view === "scholarships" && <aside className="grid content-start gap-3 rounded border border-brand-line bg-brand-blue p-5">
+              <Eyebrow>Before you apply</Eyebrow>
+              <h2 className="mb-0 text-xl">A listing is the start of the research.</h2>
+              <ul className="mb-0 list-disc space-y-2 pl-5 text-sm leading-relaxed text-brand-muted">
+                <li>Confirm official eligibility and the current cycle.</li>
+                <li>Check what the funding actually covers.</li>
+                <li>Record scholarship and admission deadlines separately.</li>
+                <li>Work backwards from your deadline.</li>
+              </ul>
+              <Link className={buttonVariants({ variant: "brand", size: "sm" })} href="/career-audit">Start an AI Career Audit</Link>
+              <Link className="text-sm font-semibold text-brand-purple hover:text-brand-orange-dark underline text-center" href="/consultation">Discuss adviser support</Link>
+              <div className="mt-2 border-t border-brand-line pt-3">
+                <h3 className="mb-1 text-base font-bold">Need a reminder?</h3>
+                <p className="mb-0 text-sm text-brand-muted">Enable an expiry reminder on a saved opportunity and we’ll email you before the listing closes.</p>
+              </div>
+            </aside>}
+          </div>
+        </>}
+        {isAuditView && (audits.length ? <div className="grid gap-3">{audits.map((audit) => <article className="rounded border border-brand-line bg-white p-4" key={audit.id}>
           <div className="mb-2 flex items-center justify-between gap-3"><span className="rounded-full bg-brand-blue px-2.5 py-1 text-xs font-semibold">{audit.goal}</span><small className="text-xs text-brand-muted">{new Date(audit.created_at).toLocaleDateString()}</small></div>
           <p className="text-sm leading-relaxed text-brand-muted">{audit.feedback.slice(0, 500)}{audit.feedback.length > 500 ? "…" : ""}</p>
           <button className="text-sm font-semibold text-brand-purple hover:underline" onClick={() => void deleteAudit(audit.id)}>Delete audit</button>
@@ -557,26 +561,26 @@ export function AuditPage() {
   const [auditAvailable, setAuditAvailable] = useState<boolean | null>(null);
   useEffect(() => {
     const timer = window.setTimeout(() => {
-    const requestedGoal = new URLSearchParams(window.location.search).get("goal");
-    const goalByQuery: Record<string, string> = {
-      job: "Job search",
-      scholarship: "A scholarship",
-      fellowship: "A fellowship",
-      phd: "A PhD",
-      masters: "A master's degree",
-    };
-    if (requestedGoal && goalByQuery[requestedGoal]) setGoal(goalByQuery[requestedGoal]);
-    const draft = sessionStorage.getItem("careergrill-audit-draft");
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft) as { goal?: string; answers?: Partial<typeof answers>; step?: number };
-        if (parsed.goal) setGoal(parsed.goal);
-        if (parsed.answers) setAnswers((current) => ({ ...current, ...parsed.answers }));
-        if (parsed.step) setStep(parsed.step);
-      } catch {
-        sessionStorage.removeItem("careergrill-audit-draft");
+      const requestedGoal = new URLSearchParams(window.location.search).get("goal");
+      const goalByQuery: Record<string, string> = {
+        job: "Job search",
+        scholarship: "A scholarship",
+        fellowship: "A fellowship",
+        phd: "A PhD",
+        masters: "A master's degree",
+      };
+      if (requestedGoal && goalByQuery[requestedGoal]) setGoal(goalByQuery[requestedGoal]);
+      const draft = sessionStorage.getItem("careergrill-audit-draft");
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft) as { goal?: string; answers?: Partial<typeof answers>; step?: number };
+          if (parsed.goal) setGoal(parsed.goal);
+          if (parsed.answers) setAnswers((current) => ({ ...current, ...parsed.answers }));
+          if (parsed.step) setStep(parsed.step);
+        } catch {
+          sessionStorage.removeItem("careergrill-audit-draft");
+        }
       }
-    }
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -623,31 +627,31 @@ export function AuditPage() {
     { label: "A scholarship", goal: "A scholarship", detail: "Study goals and funding preparation." },
     { label: "A fellowship", goal: "A fellowship", detail: "Professional development and contribution." },
   ];
-  return <div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid gap-5 py-7 lg:grid-cols-[minmax(18rem,.75fr)_minmax(0,1.25fr)]">
-    <aside className="grid content-start gap-4 self-start rounded border border-brand-line bg-brand-blue p-5">
-      <Link className="text-sm font-semibold text-brand-purple hover:underline" href="/">← Back to Careergrill</Link>
+  return <Container className="py-20 gap-10 md:gap-20">
+    <aside className="grid content-start gap-6 md:w-[60%] self-start py-1">
+      <Link className="text-sm font-semibold text-brand-purple underline underline-offset-2 hover:no-underline" href="/">← Back to Careergrill</Link>
       <div>
         <Eyebrow>AI Career Audit</Eyebrow>
-        <h1 className="my-2 text-3xl leading-tight">Review your preparation with AI.</h1>
-        <p className="mb-0 text-sm leading-relaxed text-brand-muted">Tell us about the role, course, scholarship or fellowship you’re considering and one example of your experience. Get feedback on the details you share, questions to resolve and actions to take.</p>
+        <h1 className="my-2 text-[40px] font-extrabold leading-tight">Review your preparation with AI.</h1>
+        <p className="mb-0 text-base leading-relaxed text-brand-muted">Tell us about the role, course, scholarship or fellowship you’re considering and one example of your experience. Get feedback on the details you share, questions to resolve and actions to take.</p>
       </div>
       <ol className="grid gap-2">
         {["Your goal", "Your experience", "Your target and timeline"].map((label, index) => (
-          <li className={cn("flex items-center gap-3 rounded border border-brand-line bg-white p-3 text-sm", step === index + 1 && "border-brand-purple font-semibold")} key={label}>
-            <span className={cn("grid size-7 shrink-0 place-items-center rounded-full bg-brand-sage text-xs font-bold", step === index + 1 && "bg-brand-purple text-white", step > index + 1 && "bg-brand-orange text-white")}>{index + 1}</span>{label}
+          <li className={cn("flex items-center gap-3 py-1 text-sm text-brand-muted", step === index + 1 && "font-semibold text-brand-ink")} key={label}>
+            <span className={cn("grid size-7 shrink-0 place-items-center rounded-full border border-brand-line bg-transparent text-xs font-normal", step === index + 1 && "border-brand-purple bg-brand-purple font-bold text-white", step > index + 1 && "border-brand-orange bg-brand-orange font-bold text-white")}>{index + 1}</span>{label}
           </li>
         ))}
       </ol>
-      <div className="grid gap-2 border-t border-brand-line pt-3 text-sm">
+      <div className="grid gap-2 rounded-md bg-brand-sage p-4 text-sm">
         <strong>Saving your audit</strong>
         <p className="mb-1 text-brand-muted">Start without an account. This tab keeps your draft through reloads. Sign in to save it and generate feedback. Closing the tab clears unsaved work.</p>
-        <Link className="font-semibold text-brand-purple hover:underline" href="/privacy">How your information is used</Link>
-        <Link className="font-semibold text-brand-purple hover:underline" href="/workspace/audits">See an example action plan</Link>
+        <Link className="font-semibold text-brand-purple hover:text-brand-orange-dark underline" href="/privacy">How your information is used</Link>
+        <Link className="font-semibold text-brand-purple hover:text-brand-orange-dark underline" href="/workspace/audits">See an example action plan</Link>
       </div>
     </aside>
-    <form className="grid content-start gap-4 rounded border border-brand-line bg-white p-5" onSubmit={(event) => void generate(event)}>
-      {auditAvailable === false && <div className="rounded border border-brand-line bg-brand-blue p-3 text-sm" role="status"><strong>AI feedback is temporarily unavailable.</strong><p className="mb-0 mt-1 text-brand-muted">You can still complete and save your audit. Your answers will stay in this tab until the service is available.</p></div>}
-      {auditAvailable === null && <p className="mb-0 rounded bg-brand-blue p-3 text-sm" role="status">Checking AI feedback availability…</p>}
+    <form className="grid content-start gap-4 w-full rounded-lg border border-brand-line bg-white p-5 sm:p-6" onSubmit={(event) => void generate(event)}>
+      {auditAvailable === false && <div className="rounded-md border border-[#e4c999] bg-[#fff7e8] p-3 text-sm" role="status"><strong>AI feedback is temporarily unavailable.</strong><p className="mb-0 mt-1 text-brand-muted">You can still complete and save your audit. Your answers will stay in this tab until the service is available.</p></div>}
+      {auditAvailable === null && <p className="mb-0 rounded-md bg-brand-blue p-3 text-sm" role="status">Checking AI feedback availability…</p>}
       <p className="mb-0 text-sm leading-relaxed text-brand-muted">Fields marked “Needed for AI feedback” are required to generate an assessment. You can save an incomplete draft.</p>
       <div className="text-xs font-bold uppercase tracking-widest text-brand-purple">STEP {step} OF 3</div>
       {step === 1 ? <>
@@ -656,12 +660,12 @@ export function AuditPage() {
         <fieldset className="grid gap-2">
           <legend className="sr-only">Choose your goal</legend>
           <p className="mb-0 text-sm font-semibold">Job search</p>
-          <button type="button" className={cn("flex items-start gap-3 rounded border border-brand-line p-3 text-left hover:border-brand-purple", goal === goalChoices[0].goal && "border-brand-purple bg-brand-blue")} aria-pressed={goal === goalChoices[0].goal} onClick={() => setGoal(goalChoices[0].goal)}>
+          <button type="button" className={cn("flex items-start gap-3 rounded-md border border-brand-line p-3 text-left hover:border-brand-purple", goal === goalChoices[0].goal && "border-brand-purple bg-brand-blue")} aria-pressed={goal === goalChoices[0].goal} onClick={() => setGoal(goalChoices[0].goal)}>
             <span className={cn("mt-1 size-4 shrink-0 rounded-full border border-brand-line", goal === goalChoices[0].goal && "border-4 border-brand-purple")} aria-hidden="true" /><span className="grid gap-1"><strong className="text-sm">{goalChoices[0].label}</strong><small className="text-xs text-brand-muted">{goalChoices[0].detail}</small></span>
           </button>
           <p className="mb-0 mt-2 text-sm font-semibold">Study, scholarships &amp; fellowships</p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {goalChoices.slice(1).map((item) => <button type="button" key={item.goal} className={cn("flex items-start gap-3 rounded border border-brand-line p-3 text-left hover:border-brand-purple", goal === item.goal && "border-brand-purple bg-brand-blue")} aria-pressed={goal === item.goal} onClick={() => setGoal(item.goal)}>
+            {goalChoices.slice(1).map((item) => <button type="button" key={item.goal} className={cn("flex items-start gap-3 rounded-md border border-brand-line p-3 text-left hover:border-brand-purple", goal === item.goal && "border-brand-purple bg-brand-blue")} aria-pressed={goal === item.goal} onClick={() => setGoal(item.goal)}>
               <span className={cn("mt-1 size-4 shrink-0 rounded-full border border-brand-line", goal === item.goal && "border-4 border-brand-purple")} aria-hidden="true" /><span className="grid gap-1"><strong className="text-sm">{item.label}</strong><small className="text-xs text-brand-muted">{item.detail}</small></span>
             </button>)}
           </div>
@@ -703,10 +707,10 @@ export function AuditPage() {
           : <button className={buttonVariants({ variant: "brand", size: "sm" })} disabled={auditAvailable !== true}>Generate AI feedback</button>}
       </div>
       <small className="text-xs leading-relaxed text-brand-muted">Up to five generation attempts per account each day, subject to service capacity. Failed attempts count. Reading saved feedback does not use an attempt.</small>
-      <div className="flex flex-wrap justify-between gap-3 border-t border-brand-line pt-3"><button type="button" className="text-sm font-semibold text-brand-purple hover:underline" onClick={() => { sessionStorage.removeItem("careergrill-audit-draft"); setAnswers({ direction: "", experience: "", evidence: "", concerns: "", target: "", timeline: "" }); setFeedback(""); setStep(1); setNotice("This tab’s draft has been cleared."); }}>Clear this tab’s draft</button><Link className="text-sm font-semibold text-brand-purple hover:underline" href="/faq">Questions about the audit? ↗</Link></div>
+      <div className="flex flex-wrap justify-between gap-3 border-t border-brand-line pt-3"><button type="button" className="text-sm font-semibold text-brand-purple hover:text-brand-orange-dark underline" onClick={() => { sessionStorage.removeItem("careergrill-audit-draft"); setAnswers({ direction: "", experience: "", evidence: "", concerns: "", target: "", timeline: "" }); setFeedback(""); setStep(1); setNotice("This tab’s draft has been cleared."); }}>Clear this tab’s draft</button><Link className="text-sm font-semibold text-brand-purple hover:text-brand-orange-dark underline" href="/faq">Questions about the audit? ↗</Link></div>
     </form>
     {feedback && <section className="rounded border border-brand-line bg-brand-sage p-5 lg:col-start-2"><Eyebrow>Your application direction</Eyebrow><h2 className="my-2 text-2xl">A practical next-step plan.</h2><div className="space-y-2 leading-relaxed text-brand-muted">{feedback.split("\n").map((line, index) => <p className="mb-0" key={index}>{line}</p>)}</div></section>}
-  </div>;
+  </Container>;
 }
 
 export function ContentDetail({ slug, expectedType }: { slug: string; expectedType?: ContentType }) {
