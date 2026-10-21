@@ -6,11 +6,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError, apiRequest, apiUpload, apiUrl, type SessionUser } from "@/lib/api";
 import { contentHref, type ContentType, type SiteContent } from "@/lib/site-data";
+import type { ResourceAttachment } from "@/lib/resource-tools";
 import { SiteBrand } from "@/components/site-shell";
 import RichTextEditor from "@/components/rich-text-editor";
 import ContentPreview from "@/components/content-preview";
 import AdminContentFields from "@/components/admin-content-fields";
 import AdminTrash from "@/components/admin-trash";
+import AdminFaqs from "@/components/admin-faqs";
+import AdminResourceFields from "@/components/admin-resource-fields";
+import type { ServicePricingConfig } from "@/lib/service-pricing";
 
 type AdminContent = SiteContent & { status: "draft" | "published" | "archived"; body: string; id: string; deleted_at: string | null };
 type AiProvider = "openai" | "anthropic" | "google";
@@ -27,11 +31,18 @@ interface Settings {
   ai_model: string;
   ai_models: Record<AiProvider, string>;
   career_audit_prompt: string;
+  service_pricing: ServicePricingConfig;
   storage_provider: "supabase" | "cloudinary";
   configured_ai_providers: AiProvider[];
   cloudinary_configured: boolean;
   supabase_storage_bucket: string;
   email_configured: boolean;
+}
+
+function PriceSetting({ label, value, onChange, step = 1000 }: { label: string; value: number; onChange: (value: number) => void; step?: number }) {
+  return <label className="grid gap-1.5 text-sm font-semibold">{label}
+    <input type="number" min={0} max={1_000_000_000} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} required />
+  </label>;
 }
 
 const contentTypes: { value: ContentType; label: string }[] = [
@@ -40,9 +51,29 @@ const contentTypes: { value: ContentType; label: string }[] = [
   { value: "article", label: "Blog article" },
   { value: "resource", label: "Resource" },
   { value: "service", label: "Service" },
-  { value: "faq", label: "FAQ" },
   { value: "testimonial", label: "Client feedback" },
 ];
+const editableCareerBands = [
+  { key: "0-3", label: "0–3 years" },
+  { key: "4-6", label: "4–6 years" },
+  { key: "7-10", label: "7–10 years" },
+  { key: "10+", label: "10+ years" },
+] as const;
+const editableScholarshipBands = [
+  { key: "1-2", label: "1–2 essays" },
+  { key: "3-4", label: "3–4 essays" },
+  { key: "5-6", label: "5–6 essays" },
+] as const;
+const pricingPackageFields = [
+  { key: "clarity", label: "Clarity" },
+  { key: "precision", label: "Precision" },
+  { key: "distinction", label: "Distinction" },
+] as const;
+const scholarshipPackageFields = [
+  { index: 0, label: "Clarity" },
+  { index: 1, label: "Precision" },
+  { index: 2, label: "Distinction" },
+] as const;
 const aiProviders: { value: AiProvider; label: string; defaultModel: string }[] = [
   { value: "openai", label: "OpenAI", defaultModel: "gpt-4.1-mini" },
   { value: "anthropic", label: "Anthropic", defaultModel: "claude-sonnet-4-20250514" },
@@ -54,7 +85,6 @@ const contentTypeBySection: Partial<Record<string, ContentType>> = {
   blog: "article",
   resources: "resource",
   services: "service",
-  faqs: "faq",
   feedback: "testimonial",
 };
 const fieldsByType: Partial<Record<ContentType, { key: string; label: string }[]>> = {
@@ -111,13 +141,18 @@ const fieldsByType: Partial<Record<ContentType, { key: string; label: string }[]
 };
 const emptyDraft = { type: "article" as ContentType, title: "", slug: "", excerpt: "", body: "", category: "", source_url: "", expires_at: "", status: "draft" as "draft" | "published", tags: "", data: {} as Record<string, string> };
 
-function serializedContentData(data: Record<string, string>): Record<string, string | boolean> {
-  return Object.fromEntries(Object.entries(data)
-    .filter(([, value]) => value.trim() !== "")
-    .map(([key, value]) => [
-      key,
-      ["featured", "application_page_available"].includes(key) ? value === "true" : value,
-    ]));
+function serializedContentData(data: Record<string, string>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(data).flatMap(([key, value]) => {
+    if (value.trim() === "") return [];
+    if (key === "resource_schema") {
+      try {
+        return [[key, JSON.parse(value) as unknown]];
+      } catch {
+        throw new Error("Check the resource section configuration before saving.");
+      }
+    }
+    return [[key, ["featured", "application_page_available"].includes(key) ? value === "true" : value]];
+  }));
 }
 
 function persistedContentBody(body: string): string {
@@ -180,8 +215,11 @@ export default function AdminConsole() {
   const [files, setFiles] = useState<AdminFile[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [draft, setDraft] = useState(emptyDraft);
+  const [resourceAttachments, setResourceAttachments] = useState<ResourceAttachment[]>([]);
+  const [resourceFiles, setResourceFiles] = useState<File[]>([]);
   const [editingId, setEditingId] = useState("");
   const editingContentId = useRef("");
+  const preservedContentData = useRef<Record<string, unknown>>({});
   const [isEditingPublished, setIsEditingPublished] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [aiType, setAiType] = useState<ContentType>("article");
@@ -201,6 +239,7 @@ export default function AdminConsole() {
       google: "gemini-2.5-flash",
     },
     career_audit_prompt: "",
+    service_pricing: null as ServicePricingConfig | null,
     storage_provider: "supabase" as Settings["storage_provider"],
     ai_api_key: "",
     cloudinary_cloud_name: "",
@@ -208,19 +247,60 @@ export default function AdminConsole() {
     cloudinary_api_secret: "",
   });
 
+  function updateServicePricing(update: (pricing: ServicePricingConfig) => ServicePricingConfig) {
+    setSettingsForm((current) => current.service_pricing
+      ? { ...current, service_pricing: update(current.service_pricing) }
+      : current);
+  }
+
+  function updateCareerPrice(band: keyof ServicePricingConfig["career"]["bands"], field: "individual" | "bundle", value: number) {
+    updateServicePricing((pricing) => ({
+      ...pricing,
+      career: {
+        ...pricing.career,
+        bands: {
+          ...pricing.career.bands,
+          [band]: { ...pricing.career.bands[band], [field]: value },
+        },
+      },
+    }));
+  }
+
+  function updateScholarshipPrice(band: "1-2" | "3-4" | "5-6", index: 0 | 1 | 2, value: number) {
+    updateServicePricing((pricing) => {
+      const prices: [number, number, number] = [...pricing.scholarships[band]];
+      prices[index] = value;
+      return { ...pricing, scholarships: { ...pricing.scholarships, [band]: prices } };
+    });
+  }
+
+  function updateAdmissionPrice(key: keyof ServicePricingConfig["admissions"], value: number) {
+    updateServicePricing((pricing) => ({ ...pricing, admissions: { ...pricing.admissions, [key]: value } }));
+  }
+
+  function updateMbaPrice(key: keyof ServicePricingConfig["mba"], value: number) {
+    updateServicePricing((pricing) => ({ ...pricing, mba: { ...pricing.mba, [key]: value } }));
+  }
+
   useEffect(() => {
-    setContentPreview(false);
-    if (contentType) {
-      if (preserveDraftOnNavigation.current) {
-        preserveDraftOnNavigation.current = false;
-        setAiDraftReady(false);
-      } else {
-        setDraft({ ...emptyDraft, type: contentType });
-        editingContentId.current = "";
-        setEditingId("");
-        setIsEditingPublished(false);
+    const timer = window.setTimeout(() => {
+      setContentPreview(false);
+      if (contentType) {
+        if (preserveDraftOnNavigation.current) {
+          preserveDraftOnNavigation.current = false;
+          setAiDraftReady(false);
+        } else {
+          setDraft({ ...emptyDraft, type: contentType });
+          setResourceAttachments([]);
+          setResourceFiles([]);
+          editingContentId.current = "";
+          preservedContentData.current = {};
+          setEditingId("");
+          setIsEditingPublished(false);
+        }
       }
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [contentType]);
 
   const loadDashboard = useCallback(async () => {
@@ -251,6 +331,7 @@ export default function AdminConsole() {
         ai_model: settingsResult.ai_model,
         ai_models: settingsResult.ai_models,
         career_audit_prompt: settingsResult.career_audit_prompt,
+        service_pricing: settingsResult.service_pricing,
         storage_provider: settingsResult.storage_provider,
       }));
       setAiProvider((current) => settingsResult.configured_ai_providers.includes(current)
@@ -322,8 +403,16 @@ export default function AdminConsole() {
   function editContent(item: AdminContent) {
     setContentPreview(false);
     editingContentId.current = item.id;
+    preservedContentData.current = item.type === "service" ? item.data : {};
     setEditingId(item.id);
     setIsEditingPublished(item.status === "published");
+    setResourceFiles([]);
+    setResourceAttachments([]);
+    if (item.type === "resource") {
+      void apiRequest<{ items: ResourceAttachment[] }>(`/admin/content/resources/${item.id}/attachments`)
+        .then(({ items }) => setResourceAttachments(items))
+        .catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Could not load resource downloads."));
+    }
     setDraft({
       type: item.type,
       title: item.title,
@@ -335,7 +424,9 @@ export default function AdminConsole() {
       expires_at: item.expires_at ? item.expires_at.slice(0, 10) : "",
       status: item.status === "published" ? "published" : "draft",
       tags: item.tags.join(", "),
-      data: Object.fromEntries(Object.entries(item.data).map(([key, value]) => [key, String(value)])),
+      data: item.type === "service" ? {} : Object.fromEntries(Object.entries(item.data)
+        .filter(([key]) => key !== "attachments")
+        .map(([key, value]) => [key, key === "resource_schema" ? JSON.stringify(value) : String(value)])),
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -349,30 +440,46 @@ export default function AdminConsole() {
     setBusy(true);
     setNotice("");
     const contentId = editingContentId.current;
-    const body = {
-      ...draft,
-      body: persistedContentBody(draft.body),
-      type: contentType ?? draft.type,
-      status,
-      tags: draft.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
-      expires_at: draft.expires_at ? new Date(`${draft.expires_at}T23:59:59.000Z`).toISOString() : null,
-      source_url: draft.source_url || null,
-      data: serializedContentData(draft.data),
-    };
     try {
-      await apiRequest(contentId ? `/admin/content/${contentId}` : "/admin/content", {
+      const body = {
+        ...draft,
+        body: persistedContentBody(draft.body),
+        type: contentType ?? draft.type,
+        status,
+        tags: draft.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+        expires_at: draft.expires_at ? new Date(`${draft.expires_at}T23:59:59.000Z`).toISOString() : null,
+        source_url: draft.source_url || null,
+        data: draft.type === "service"
+          ? { ...preservedContentData.current, ...serializedContentData(draft.data) }
+          : serializedContentData(draft.data),
+      };
+      const { item: savedContent } = await apiRequest<{ item: AdminContent }>(contentId ? `/admin/content/${contentId}` : "/admin/content", {
         method: contentId ? "PATCH" : "POST",
         body: JSON.stringify(body),
       });
+      if (draft.type === "resource") {
+        editingContentId.current = savedContent.id;
+        setEditingId(savedContent.id);
+      }
+      for (const resourceFile of draft.type === "resource" ? resourceFiles : []) {
+        const form = new FormData();
+        form.append("file", resourceFile);
+        const { item } = await apiUpload<{ item: ResourceAttachment }>(`/admin/content/resources/${savedContent.id}/attachments`, form);
+        setResourceAttachments((current) => [...current, item]);
+        setResourceFiles((current) => current.filter((file) => file !== resourceFile));
+      }
       setNotice(status === "published" ? "Content published." : "Draft saved.");
       editingContentId.current = "";
+      preservedContentData.current = {};
       setEditingId("");
       setIsEditingPublished(false);
       setDraft({ ...emptyDraft, type: contentType ?? "article" });
+      setResourceAttachments([]);
+      setResourceFiles([]);
       setContentPreview(false);
       await loadDashboard();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Could not save this content.");
+      setNotice(error instanceof Error ? error.message : "Could not save this content. Any successfully uploaded files remain attached.");
     } finally {
       setBusy(false);
     }
@@ -537,7 +644,7 @@ export default function AdminConsole() {
     setNotice("");
     const aiModels = { ...settingsForm.ai_models, [settingsForm.ai_provider]: settingsForm.ai_model };
     const payload = {
-      ...Object.fromEntries(Object.entries(settingsForm).filter(([, value]) => value !== "")),
+      ...Object.fromEntries(Object.entries(settingsForm).filter(([key, value]) => key !== "service_pricing" && value !== "")),
       ai_models: aiModels,
     };
     try {
@@ -597,6 +704,31 @@ export default function AdminConsole() {
     }
   }
 
+  async function saveServicePricing(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const servicePricing = settingsForm.service_pricing;
+    if (!servicePricing) {
+      setNotice("Service pricing has not been loaded from the database.");
+      return;
+    }
+    setBusy(true);
+    setNotice("");
+    try {
+      await apiRequest("/admin/settings", {
+        method: "PUT",
+        body: JSON.stringify({ service_pricing: servicePricing }),
+      });
+      setSettings((current) => current
+        ? { ...current, service_pricing: servicePricing }
+        : current);
+      setNotice("Service prices saved and are now available on the services page.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save service prices.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (access === "checking") {
     return <div className="grid min-h-screen place-content-center justify-items-center gap-3 bg-brand-cream text-brand-muted"><span className="size-8 animate-spin rounded-full border-4 border-brand-line border-t-brand-purple" /><p>Connecting to the Careergrill content studio…</p></div>;
   }
@@ -642,6 +774,7 @@ export default function AdminConsole() {
   };
   const title = sectionTitles[section] ?? "Your studio";
   const sectionContents = contentType ? contents.filter((item) => item.type === contentType) : contents;
+  const pricingForm = settingsForm.service_pricing;
 
   return <div className="min-h-screen bg-brand-cream font-sans lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
     <aside className="sticky top-0 z-20 flex max-h-screen flex-col gap-4 overflow-y-auto bg-brand-ink p-4 text-white max-lg:static max-lg:max-h-none">
@@ -678,6 +811,7 @@ export default function AdminConsole() {
         {section === "trash" && <AdminTrash items={trashedContents} onRestore={restoreContent} />}
         {notice && <div className="rounded border border-brand-line bg-brand-blue p-3 text-sm" role="status">{notice}</div>}
         {connectionError && <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{connectionError}</div>}
+        {section === "faqs" && <AdminFaqs />}
         {isContentSection ? <section className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,.8fr)]">
           <div>
             <form className="grid content-start gap-4 rounded border border-brand-line bg-white p-5 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-sm [&_label]:font-semibold [&_input]:min-h-10 [&_input]:rounded [&_input]:border [&_input]:border-brand-line [&_input]:px-3 [&_input]:py-2 [&_input]:font-normal [&_select]:min-h-10 [&_select]:rounded [&_select]:border [&_select]:border-brand-line [&_select]:bg-white [&_select]:px-3 [&_select]:py-2 [&_select]:font-normal [&_textarea]:rounded [&_textarea]:border [&_textarea]:border-brand-line [&_textarea]:px-3 [&_textarea]:py-2 [&_textarea]:font-normal" onSubmit={submitContent}>
@@ -697,9 +831,18 @@ export default function AdminConsole() {
               <div className="grid gap-3 sm:grid-cols-2"><label>URL slug<input value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value })} placeholder="leave blank to generate" /></label><label>Tags<input value={draft.tags} onChange={(event) => setDraft({ ...draft, tags: event.target.value })} placeholder="Comma-separated" /></label></div>
               <label>Short introduction<textarea value={draft.excerpt} onChange={(event) => setDraft({ ...draft, excerpt: event.target.value })} rows={3} maxLength={500} /></label>
               {fieldsByType[draft.type]?.length ? <AdminContentFields fields={fieldsByType[draft.type] ?? []} data={draft.data} onChange={(key, value) => setDraft((current) => ({ ...current, data: { ...current.data, [key]: value } }))} /> : null}
+              {draft.type === "resource" && <AdminResourceFields
+                value={draft.data.resource_schema ?? ""}
+                onChange={(value) => setDraft((current) => ({ ...current, data: { ...current.data, resource_schema: value } }))}
+                attachments={resourceAttachments}
+                onAttachmentsChange={setResourceAttachments}
+                files={resourceFiles}
+                onFilesChange={setResourceFiles}
+                resourceId={editingId}
+              />}
               <label>Content</label><RichTextEditor value={draft.body} onChange={(body) => setDraft((current) => ({ ...current, body }))} onError={setNotice} />
               <div className="grid gap-3 sm:grid-cols-2"><label>Official source URL<input type="url" value={draft.source_url} onChange={(event) => setDraft({ ...draft, source_url: event.target.value })} placeholder="https://" /></label><label>Expiry date<input type="date" value={draft.expires_at} onChange={(event) => setDraft({ ...draft, expires_at: event.target.value })} /></label></div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-line pt-4"><span className="text-xs text-brand-muted">{editingId ? "Preview your edits before updating this item." : "Preview before publishing to check how this appears to readers."}</span><div className="flex gap-2"><button type="button" className={buttonVariants({ variant: "outline", size: "sm" })} onClick={() => { editingContentId.current = ""; setEditingId(""); setIsEditingPublished(false); setContentPreview(false); setDraft({ ...emptyDraft, type: contentType ?? "article" }); }}>Clear</button><button className={buttonVariants({ variant: "brand", size: "sm" })} disabled={busy}>{busy ? "Saving…" : editingId ? "Preview changes" : "Save draft"}</button></div></div>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-line pt-4"><span className="text-xs text-brand-muted">{editingId ? "Preview your edits before updating this item." : "Preview before publishing to check how this appears to readers."}</span><div className="flex gap-2"><button type="button" className={buttonVariants({ variant: "outline", size: "sm" })} onClick={() => { editingContentId.current = ""; setEditingId(""); setIsEditingPublished(false); setContentPreview(false); setResourceAttachments([]); setResourceFiles([]); setDraft({ ...emptyDraft, type: contentType ?? "article" }); }}>Clear</button><button className={buttonVariants({ variant: "brand", size: "sm" })} disabled={busy}>{busy ? "Saving…" : editingId ? "Preview changes" : "Save draft"}</button></div></div>
               </>}
             </form>
           </div>
@@ -790,6 +933,49 @@ export default function AdminConsole() {
               <Link className="text-sm font-semibold text-brand-purple hover:underline" href="/privacy">Review privacy information ↗</Link>
             </div>
           </section>
+          {pricingForm ? <form className="grid gap-5 rounded border border-brand-line bg-white p-5 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-sm [&_label]:font-semibold [&_input]:min-h-10 [&_input]:rounded [&_input]:border [&_input]:border-brand-line [&_input]:px-3 [&_input]:py-2 [&_input]:font-normal" onSubmit={(event) => void saveServicePricing(event)}>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">SERVICE PRICING</span>
+              <h2 className="mb-1 mt-1 text-2xl">Update the prices shown on the website.</h2>
+              <p className="mb-0 text-sm text-brand-muted">Amounts are in Nigerian Naira. Saving publishes the new amounts to the public services page.</p>
+            </div>
+            <section className="grid gap-4 border-t border-brand-line pt-4">
+              <h3 className="mb-0 text-lg">Career services</h3>
+              <div className="grid gap-3 md:grid-cols-2">
+                {editableCareerBands.map(({ key, label }) => <div className="grid gap-2 rounded border border-brand-line p-3 sm:grid-cols-2" key={key}>
+                  <strong className="sm:col-span-2">{label}</strong>
+                  <PriceSetting label="Individual service" value={pricingForm.career.bands[key].individual} onChange={(value) => updateCareerPrice(key, "individual", value)} />
+                  <PriceSetting label="Three-service bundle" value={pricingForm.career.bands[key].bundle} onChange={(value) => updateCareerPrice(key, "bundle", value)} />
+                </div>)}
+              </div>
+              <div className="max-w-sm"><PriceSetting label="Interview preparation (two sessions)" value={pricingForm.career.interview} onChange={(value) => updateServicePricing((pricing) => ({ ...pricing, career: { ...pricing.career, interview: value } }))} /></div>
+            </section>
+            <section className="grid gap-4 border-t border-brand-line pt-4">
+              <h3 className="mb-0 text-lg">Admission essay packages (per school)</h3>
+              <div className="grid gap-3 md:grid-cols-3">
+                {pricingPackageFields.map(({ key, label }) => <PriceSetting key={key} label={label} value={pricingForm.admissions[key]} onChange={(value) => updateAdmissionPrice(key, value)} />)}
+              </div>
+            </section>
+            <section className="grid gap-4 border-t border-brand-line pt-4">
+              <h3 className="mb-0 text-lg">Scholarship essay packages</h3>
+              {editableScholarshipBands.map(({ key, label }) => <div className="grid gap-3 rounded border border-brand-line p-3 sm:grid-cols-3" key={key}>
+                <strong className="sm:col-span-3">{label}</strong>
+                {scholarshipPackageFields.map(({ index, label: packageLabel }) => <PriceSetting key={packageLabel} label={packageLabel} value={pricingForm.scholarships[key][index]} onChange={(value) => updateScholarshipPrice(key, index, value)} />)}
+              </div>)}
+              <p className="mb-0 text-sm text-brand-muted">Seven or more essays remain custom-quoted.</p>
+            </section>
+            <section className="grid gap-4 border-t border-brand-line pt-4">
+              <h3 className="mb-0 text-lg">MBA packages and volume discounts</h3>
+              <div className="grid gap-3 md:grid-cols-3">
+                <PriceSetting label="Application Essentials (per school)" value={pricingForm.mba.essentials} onChange={(value) => updateMbaPrice("essentials", value)} />
+                <PriceSetting label="Scholarship Mastery (per school)" value={pricingForm.mba.mastery} onChange={(value) => updateMbaPrice("mastery", value)} />
+                <PriceSetting label="Full-Ride Pro (per school)" value={pricingForm.mba.fullRide} onChange={(value) => updateMbaPrice("fullRide", value)} />
+                <PriceSetting label="Discount from five schools (%)" value={pricingForm.mba.discountAtFive} step={1} onChange={(value) => updateMbaPrice("discountAtFive", value)} />
+                <PriceSetting label="Discount from ten schools (%)" value={pricingForm.mba.discountAtTen} step={1} onChange={(value) => updateMbaPrice("discountAtTen", value)} />
+              </div>
+            </section>
+            <button className={`${buttonVariants({ variant: "brand", size: "sm" })} justify-self-start`} disabled={busy}>{busy ? "Saving…" : "Save service pricing"}</button>
+          </form> : <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">Service pricing is missing from the database. Apply the backend pricing seed migration before editing prices.</p>}
           <form className="grid content-start gap-3 rounded border border-brand-line bg-white p-5 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-sm [&_label]:font-semibold [&_textarea]:rounded [&_textarea]:border [&_textarea]:border-brand-line [&_textarea]:px-3 [&_textarea]:py-2 [&_textarea]:font-normal" onSubmit={(event) => void saveCareerAuditPrompt(event)}>
             <div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">CAREER AUDIT INSTRUCTIONS</span><h2 className="mb-0 mt-1 text-2xl">Set the guidance for AI feedback.</h2></div>
             <p className="mb-0 text-sm leading-relaxed text-brand-muted">This additional instruction is combined with the Career Audit’s safety and accuracy rules, then used with the applicant’s answers. Keep applicant answers as the source of their personal facts.</p>

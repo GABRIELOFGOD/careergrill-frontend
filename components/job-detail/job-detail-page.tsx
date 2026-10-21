@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ApiError, apiRequest } from "@/lib/api";
-import { sampleContent, type SiteContent } from "@/lib/site-data";
+import { type SiteContent } from "@/lib/site-data";
 import { Eyebrow } from "@/components/site-shell";
 import RichContent from "@/components/rich-content";
 import JobApplicationPanel from "./job-application-panel";
@@ -14,10 +14,7 @@ import { jobField } from "./job-detail-utils";
 import { buttonVariants } from "@/components/ui/button";
 
 export default function JobDetailPage({ slug }: { slug: string }) {
-  const [item, setItem] = useState<SiteContent | null>(() => {
-    const sample = sampleContent.find((content) => content.slug === slug && content.type === "job");
-    return sample ?? null;
-  });
+  const [item, setItem] = useState<SiteContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [notice, setNotice] = useState("");

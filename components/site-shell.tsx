@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { navigation } from "@/lib/site-data";
 import SiteNavigation from "@/components/site-navigation";
@@ -7,13 +8,10 @@ import { cn } from "@/lib/utils";
 
 export function SiteBrand({ footer = false }: { footer?: boolean }) {
   return (
-    <Link
-      href="/"
-      className={`inline-flex items-center gap-2 whitespace-nowrap font-display font-extrabold tracking-[-0.06em] ${footer ? "text-2xl text-brand-footer" : "text-2xl text-brand-ink lg:text-3xl"}`}
-      aria-label="Careergrill home"
-    >
-      <span className={`grid place-items-center rounded-full border-2 border-brand-orange bg-transparent font-display font-bold leading-none text-brand-orange ${footer ? "size-6 text-sm" : "size-8 text-2xl"}`}>c</span>
-      Careergrill<span className={`-ml-2 text-brand-orange ${footer ? "-ml-1.5" : ""}`}>.</span>
+    <Link href="/" className="inline-flex items-center whitespace-nowrap" aria-label="Careergrill home">
+      {footer
+        ? <><Image src="/logo-icon.png" alt="" width={650} height={673} className="mr-1.5 size-6 object-contain" /><span className="font-display text-2xl font-extrabold tracking-[-0.06em] text-brand-footer">Careergrill<span className="text-brand-orange">.</span></span></>
+        : <Image src="/logo.png" alt="" width={1924} height={358} className="h-8 w-auto lg:h-9" priority />}
     </Link>
   );
 }
@@ -55,8 +53,7 @@ function Footer() {
           <strong className="text-sm">Get in touch</strong>
           <div className="mt-2.5 grid gap-1.5 text-sm text-brand-footer-link [&_a:hover]:text-brand-footer-hover">
             <a href="mailto:info@careergrill.com">info@careergrill.com</a>
-            <a href="https://wa.me/2348168097950" target="_blank" rel="noreferrer">Message on WhatsApp</a>
-            <a href="https://careergrill.com" target="_blank" rel="noreferrer">Visit careergrill.com</a>
+            <a href="https://wa.me/2348129982113" target="_blank" rel="noreferrer">Message on WhatsApp</a>
           </div>
         </div>
       </div>

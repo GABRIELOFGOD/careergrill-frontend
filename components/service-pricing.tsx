@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { Eyebrow } from "@/components/site-shell";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/api";
+import type { ServicePricingCopy } from "@/lib/public-copy";
+import type { ServicePricingConfig } from "@/lib/service-pricing";
+import { usePublicCopy } from "./use-public-copy";
 
 type Category = "career" | "admissions" | "scholarships" | "mba";
 
@@ -15,6 +19,10 @@ type Package = {
   inclusions: string[];
   rate: string;
   offer: number;
+  kicker: string;
+  saving?: string;
+  unitDetail?: string;
+  featured?: boolean;
 };
 
 const categories: { id: Category; label: string }[] = [
@@ -25,101 +33,32 @@ const categories: { id: Category; label: string }[] = [
 ];
 
 const careerBands = [
-  { value: "0-3", label: "0–3 years", individual: 20000, bundle: 50000, saving: 10000 },
-  { value: "4-6", label: "4–6 years", individual: 35000, bundle: 90000, saving: 15000 },
-  { value: "7-10", label: "7–10 years", individual: 50000, bundle: 130000, saving: 20000 },
-  { value: "10+", label: "10+ years", individual: 80000, bundle: 205000, saving: 35000 },
-];
+  { value: "0-3", label: "0–3 years" },
+  { value: "4-6", label: "4–6 years" },
+  { value: "7-10", label: "7–10 years" },
+  { value: "10+", label: "10+ years" },
+] as const;
 
 const scholarshipBands = [
-  { value: "1-2", label: "1–2 essays", prices: [170000, 220000, 270000] },
-  { value: "3-4", label: "3–4 essays", prices: [200000, 260000, 320000] },
-  { value: "5-6", label: "5–6 essays", prices: [240000, 310000, 390000] },
-  { value: "7+", label: "7 or more essays", prices: [null, null, null] },
-];
-
-const admissionsPackages: Package[] = [
-  {
-    title: "Clarity",
-    price: 60000,
-    unit: "per school",
-    description: "You have a solid draft and want it sharpened.",
-    inclusions: ["30-minute package consultation", "2 feedback rounds", "Basic CV review"],
-    rate: "admissions-clarity",
-    offer: 1,
-  },
-  {
-    title: "Precision",
-    price: 100000,
-    unit: "per school",
-    description: "Your drafts need work, along with your CV.",
-    inclusions: ["45-minute package consultation", "4 feedback rounds", "Detailed CV review", "Proofreading"],
-    rate: "admissions-precision",
-    offer: 1,
-  },
-  {
-    title: "Distinction",
-    price: 150000,
-    unit: "per school",
-    description: "Support for several essays, formatting and priority review.",
-    inclusions: ["60-minute package consultation", "6 feedback rounds", "Comprehensive CV review", "Proofreading", "Formatting to school requirements", "Priority support"],
-    rate: "admissions-distinction",
-    offer: 1,
-  },
-];
-
-const scholarshipPackages = [
-  {
-    title: "Clarity",
-    description: "Essay feedback, a CV review and a reference-letter review.",
-    inclusions: ["45-minute package consultation", "2 feedback rounds", "Basic CV review", "1 reference letter review"],
-    rate: "scholarships-clarity",
-  },
-  {
-    title: "Precision",
-    description: "More feedback rounds, a CV rewrite and proofreading.",
-    inclusions: ["60-minute package consultation", "4 feedback rounds", "Detailed CV review", "2 reference letter reviews", "Proofreading"],
-    rate: "scholarships-precision",
-  },
-  {
-    title: "Distinction",
-    description: "The most feedback rounds, with formatting and priority support.",
-    inclusions: ["90-minute package consultation", "6 feedback rounds", "Comprehensive CV review", "3 reference letter reviews", "Proofreading", "Formatting", "Priority support"],
-    rate: "scholarships-distinction",
-  },
-];
-
-const mbaPackages = [
-  {
-    title: "Application Essentials",
-    perSchool: 100000,
-    description: "Review of solid drafts across your school list.",
-    inclusions: ["2 hours of brainstorming", "2 essay rounds per school", "Essential CV review", "Support with 1 recommender letter", "Basic scholarship guidance"],
-    rate: "mba-essentials",
-  },
-  {
-    title: "Scholarship Mastery",
-    perSchool: 150000,
-    description: "Application support with a closer look at funding options.",
-    inclusions: ["2 hours of brainstorming", "4 essay rounds per school", "Strategic CV review", "Support with 2 recommender letters", "Comprehensive scholarship guidance", "Strategy call"],
-    rate: "mba-mastery",
-  },
-  {
-    title: "Full-Ride Pro",
-    perSchool: 180000,
-    description: "Essay, CV, recommender and scholarship-essay support.",
-    inclusions: ["4 hours of brainstorming", "6 essay rounds per school", "Comprehensive CV review", "Support with 3 recommender letters", "Full scholarship guidance, including scholarship essays", "Strategy call"],
-    rate: "mba-full-ride",
-  },
-];
-
-const money = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
+  { value: "1-2", label: "1–2 essays" },
+  { value: "3-4", label: "3–4 essays" },
+  { value: "5-6", label: "5–6 essays" },
+  { value: "7+", label: "7 or more essays" },
+] as const;
 
 const pricingPanelClassName = "mb-3 flex min-h-20 items-center gap-5 rounded-md border border-brand-sage bg-brand-blue p-3.5 max-md:flex-col max-md:items-stretch";
 const pricingLabelClassName = "grid min-w-60 gap-2 text-sm font-bold text-brand-ink";
 const pricingFieldClassName = "min-h-10 w-full max-w-64 rounded border border-brand-sage bg-white px-2.5 py-1.5 text-base text-brand-ink max-md:max-w-none";
 const pricingCardsClassName = "grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3";
-const pricingFactsClassName = "my-3 grid gap-4 border-y border-brand-line py-3 md:grid-cols-3 [&>p]:mb-0 [&>p]:text-sm [&>p]:leading-relaxed [&>p]:text-brand-muted [&>p>strong]:text-brand-ink";
+const pricingFactsClassName = "my-3 grid gap-4 border-y border-brand-line py-3 md:grid-cols-3 [&>p]:mb-0 [&>p]:text-sm [&>p]:leading-relaxed [&>p>strong]:text-brand-ink";
+
+function formatCopy(template: string, values: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (token, key: string) => values[key] ?? token);
+}
+
+function money(amount: number, currencySymbol: string) {
+  return `${currencySymbol}${amount.toLocaleString("en-NG")}`;
+}
 
 function enquiryHref(rate: string, service: Category, offer: number, extra: Record<string, string> = {}) {
   const params = new URLSearchParams({ rate, service, offer: String(offer), ...extra });
@@ -140,26 +79,24 @@ function PackageCard({
   saving,
   unitDetail,
   featured = false,
+  copy,
 }: Package & {
   service: Category;
   extra?: Record<string, string>;
-  kicker: string;
-  saving?: string;
-  unitDetail?: string;
-  featured?: boolean;
+  copy: Pick<ServicePricingCopy, "customQuote" | "requestQuote" | "enquirePrefix" | "currencySymbol">;
 }) {
   return (
     <article className={`flex min-w-0 min-h-75 flex-col rounded-lg border gap-3 p-6 ${featured ? "border-brand-orange-dark bg-brand-footer" : "border-brand-purple/30 bg-white"}`}>
       <p className="mb-3.5 min-h-4 text-sm font-bold leading-snug text-brand-eyebrow">{kicker}</p>
       <h3 className="mb-3.5 min-h-7 font-display text-xl font-bold tracking-tight">{title}</h3>
-      <p className="mb-0 font-display text-3xl font-extrabold leading-tight tracking-tight">{price === null ? "Custom quote" : money(price)}</p>
+      <p className="mb-0 font-display text-3xl font-extrabold leading-tight tracking-tight">{price === null ? copy.customQuote : money(price, copy.currencySymbol)}</p>
       <p className="mb-3 mt-0.5 text-sm text-brand-muted">{unit}</p>
       {unitDetail && <p className="-mt-2.5 mb-2.5 text-sm text-brand-muted">{unitDetail}</p>}
       {saving && <p className="mb-3 rounded bg-amber-50 px-2 py-2 text-sm text-amber-950">{saving}</p>}
       {description && <p className="mb-2.5 min-h-8 text-sm leading-relaxed text-brand-muted">{description}</p>}
       <ul className="mb-3.5 mt-2 list-disc pl-4 text-sm leading-relaxed text-brand-ink [&>li+li]:mt-1.5">{inclusions.map((item) => <li key={item}>{item}</li>)}</ul>
       <Link href={enquiryHref(rate, service, offer, extra)}>
-        <Button variant={"outline"} className="w-full">{price === null ? "Request a quote" : `Enquire about ${title}`}</Button>
+        <Button variant={"outline"} className="w-full">{price === null ? copy.requestQuote : `${copy.enquirePrefix} ${title}`}</Button>
       </Link>
     </article>
   );
@@ -174,7 +111,29 @@ function Terms({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+function Facts({ facts }: { facts: ServicePricingCopy["career"]["facts"] }) {
+  return (
+    <div className={pricingFactsClassName}>
+      {facts.map((fact) => <p key={fact.label}><strong>{fact.label}:</strong> {fact.text}</p>)}
+    </div>
+  );
+}
+
+function CancellationRows({ copy, stages }: { copy: ServicePricingCopy["cancellation"]; stages: string[] }) {
+  return (
+    <>
+      <h3 className="mb-1 mt-3 border-t border-brand-line pt-2.5 font-display text-base font-bold">{copy.title}</h3>
+      {stages.map((stage, index) => <div className="flex justify-between gap-4 border-b border-brand-line py-2 text-sm" key={stage}><span>{stage}</span><strong className="whitespace-nowrap text-brand-purple">{copy.amounts[index]}</strong></div>)}
+      <p>{copy.note}</p>
+    </>
+  );
+}
+
 export default function ServicePricing() {
+  const { copy: siteCopy, error: copyError, loading: copyLoading } = usePublicCopy();
+  const [pricing, setPricing] = useState<ServicePricingConfig | null>(null);
+  const [pricingLoadError, setPricingLoadError] = useState("");
+  const [pricingLoading, setPricingLoading] = useState(true);
   const [category, setCategory] = useState<Category>("career");
   const [careerBand, setCareerBand] = useState("0-3");
   const [essayBand, setEssayBand] = useState("1-2");
@@ -188,65 +147,83 @@ export default function ServicePricing() {
     }
   }, []);
 
+  useEffect(() => {
+    apiRequest<{ pricing: ServicePricingConfig }>("/pricing")
+      .then(({ pricing: savedPricing }) => setPricing(savedPricing))
+      .catch((error: unknown) => {
+        setPricingLoadError(error instanceof Error ? error.message : "Updated service prices could not be loaded.");
+      })
+      .finally(() => setPricingLoading(false));
+  }, []);
+
+  const copy = siteCopy?.pricing;
+  if (!pricing || !copy) {
+    const loading = pricingLoading || copyLoading;
+    const error = pricingLoadError || copyError;
+    return <section className="mx-auto w-full max-w-7xl px-4 py-7 sm:px-8" id="service-pricing" aria-labelledby="service-pricing-title">
+      <h2 className="mb-3 text-3xl" id="service-pricing-title">Service pricing</h2>
+      {loading ? <p role="status">Loading current prices…</p> : <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">Pricing information could not be loaded from the backend: {error}</p>}
+    </section>;
+  }
+
   const selectedCareerBand = careerBands.find((band) => band.value === careerBand) ?? careerBands[0];
+  const selectedCareerPrice = pricing.career.bands[selectedCareerBand.value];
   const selectedEssayBand = scholarshipBands.find((band) => band.value === essayBand) ?? scholarshipBands[0];
   const effectiveEssayBand = hasScholarshipAssessment ? scholarshipBands[2] : selectedEssayBand;
   const essayCustomQuote = effectiveEssayBand.value === "7+";
+  const scholarshipPrices = pricing.scholarships[effectiveEssayBand.value];
   const parsedSchoolCount = Number(schoolCountInput);
   const schoolCount = Number.isFinite(parsedSchoolCount) && parsedSchoolCount >= 3 ? Math.floor(parsedSchoolCount) : 3;
-  const discount = paymentPlan === "single" ? schoolCount >= 10 ? 0.1 : schoolCount >= 5 ? 0.05 : 0 : 0;
+  const discount = paymentPlan === "single"
+    ? schoolCount >= 10 ? pricing.mba.discountAtTen / 100 : schoolCount >= 5 ? pricing.mba.discountAtFive / 100 : 0
+    : 0;
   const mbaExtra = { schools: String(schoolCount), payment: paymentPlan === "single" ? "single" : "instalments" };
 
-  const careerCards: (Package & { saving?: string; featured?: boolean })[] = [
-    ...[
-      { title: "CV / résumé", rate: "career-cv", offer: 0 },
-      { title: "Cover letter", rate: "career-cover-letter", offer: 3 },
-      { title: "LinkedIn profile", rate: "career-linkedin", offer: 1 },
-    ].map((item) => ({
-      ...item,
-      price: selectedCareerBand.individual,
-      unit: "per person",
-      inclusions: ["First draft within 72 hours of receiving materials", "2 revision rounds within one week of the draft"],
-    })),
+  const packageFor = (rate: string, price: number | null, offer: number, kicker: string): Package => {
+    const packageCopy = copy.packages[rate];
+    return { ...packageCopy, rate, price, offer, kicker };
+  };
+
+  const careerCards = [
+    ...(["career-cv", "career-cover-letter", "career-linkedin"] as const).map((rate, index) =>
+      packageFor(rate, selectedCareerPrice.individual, [0, 3, 1][index], formatCopy(copy.career.experienceKicker, { band: selectedCareerBand.label })),
+    ),
     {
-      title: "CV + cover letter + LinkedIn",
-      rate: "career-bundle",
-      offer: 4,
-      price: selectedCareerBand.bundle,
-      unit: "per person",
-      saving: `Save ${money(selectedCareerBand.saving)} compared with booking separately`,
-      inclusions: ["CV / résumé", "Cover letter", "LinkedIn profile", "First draft within 72 hours of receiving materials", "2 revision rounds within one week of the draft"],
+      ...packageFor("career-bundle", selectedCareerPrice.bundle, 4, formatCopy(copy.career.experienceKicker, { band: selectedCareerBand.label })),
+      saving: formatCopy(copy.career.savingTemplate, {
+        amount: money(Math.max(0, selectedCareerPrice.individual * 3 - selectedCareerPrice.bundle), copy.currencySymbol),
+      }),
       featured: true,
     },
-    {
-      title: "Interview preparation",
-      rate: "career-interview",
-      offer: 2,
-      price: 50000,
-      unit: "for two coaching sessions",
-      inclusions: ["Two coaching sessions", "Role-specific preparation and feedback"],
-    },
+    packageFor("career-interview", pricing.career.interview, 2, copy.career.interviewKicker),
   ];
+
+  const admissionsPrices = [pricing.admissions.clarity, pricing.admissions.precision, pricing.admissions.distinction];
+  const admissionCards = (["admissions-clarity", "admissions-precision", "admissions-distinction"] as const)
+    .map((rate, index) => packageFor(rate, admissionsPrices[index], 1, copy.admissions.kicker));
+  const scholarshipCards = (["scholarships-clarity", "scholarships-precision", "scholarships-distinction"] as const)
+    .map((rate, index) => packageFor(rate, scholarshipPrices[index], 0, effectiveEssayBand.label));
+  const mbaPrices = [pricing.mba.essentials, pricing.mba.mastery, pricing.mba.fullRide];
+  const mbaCards = (["mba-essentials", "mba-mastery", "mba-full-ride"] as const).map((rate, index) => {
+    const total = Math.round(mbaPrices[index] * schoolCount * (1 - discount));
+    const perSchool = Math.round(total / schoolCount);
+    return {
+      ...packageFor(rate, total, 3, paymentPlan === "single" ? copy.mba.singleKicker : copy.mba.instalmentsKicker),
+      unit: formatCopy(copy.mba.totalUnitTemplate, { schools: String(schoolCount) }),
+      unitDetail: formatCopy(copy.mba.perSchoolTemplate, { price: money(perSchool, copy.currencySymbol) }),
+    };
+  });
+  const mbaDiscountText = discount ? formatCopy(copy.mba.discountApplied, { discount: String(Math.round(discount * 100)) }) : "";
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 scroll-mt-6 border-t border-brand-line py-7 pb-12 flex flex-col gap-5" id="service-pricing" aria-labelledby="service-pricing-title">
       <header className="mb-5 grid items-end gap-6 md:grid-cols-[minmax(0,1fr)_minmax(15.625rem,.55fr)]">
-        <div><Eyebrow className="mb-3 text-brand-eyebrow">Pricing</Eyebrow><h2 className="mb-0 text-5xl" id="service-pricing-title">Know what’s included.<br />Choose your support.</h2></div>
-        <p className="mb-1 max-w-sm text-sm text-brand-muted">All prices are in Nigerian Naira. Choose a service to see its fees, inclusions and terms.</p>
+        <div><Eyebrow className="mb-3 text-brand-eyebrow">{copy.page.eyebrow}</Eyebrow><h2 className="mb-0 whitespace-pre-line text-5xl" id="service-pricing-title">{copy.page.title}</h2></div>
+        <p className="mb-1 max-w-sm text-sm text-brand-muted">{copy.page.description}</p>
       </header>
 
       <div className="mb-4 grid grid-cols-2 gap-1 rounded-md border border-brand-sage bg-brand-sage p-1 md:grid-cols-4" role="group" aria-label="Choose a pricing category">
-        {categories.map((item) => (
-          <button
-            key={item.id}
-            className="min-h-10 rounded px-2.5 py-2 text-sm font-bold text-brand-purple transition-colors hover:bg-white/70 aria-pressed:bg-white"
-            type="button"
-            aria-pressed={category === item.id}
-            onClick={() => setCategory(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
+        {categories.map((item) => <button key={item.id} className="min-h-10 rounded px-2.5 py-2 text-sm font-bold text-brand-purple transition-colors hover:bg-white/70 aria-pressed:bg-white" type="button" aria-pressed={category === item.id} onClick={() => setCategory(item.id)}>{item.label}</button>)}
       </div>
 
       {category === "career" && (
@@ -258,44 +235,30 @@ export default function ServicePricing() {
               </select>
             </label>
           </div>
-          <p className="mb-2.5 min-h-5 text-sm text-brand-muted" role="status">Prices for {selectedCareerBand.label} of experience. Interview coaching has one flat rate.{careerBand === "7-10" || careerBand === "10+" ? " Exactly 10 years? Confirm your band before payment." : ""}</p>
-          <div className={pricingCardsClassName}>
-            {careerCards.map((item) => (
-              <PackageCard key={item.rate} {...item} service="career" extra={item.rate === "career-interview" ? {} : { band: careerBand }} kicker={item.rate === "career-interview" ? "One flat rate at every experience level" : `${selectedCareerBand.label} of professional experience`} />
-            ))}
-          </div>
-          <div className={pricingFactsClassName}>
-            <p><strong>Delivery:</strong> first document draft within 72 hours of receiving your materials.</p>
-            <p><strong>Revisions:</strong> two rounds, used within one week of receiving the draft. Requests after that week are new work and priced separately.</p>
-            <p><strong>Payment:</strong> full payment before work begins. Prices are per person, not per job application.</p>
-          </div>
-          <Terms title="Process, experience bands and cancellation">
-            <p>Use your total years of professional experience, not time in your current role. The supplied bands overlap at exactly 10 years; confirm your band with us before paying.</p>
-            <p>Choose your service, confirm your slot, send your CV and target roles, then discuss your experience on a call. Confirm cancellation terms before payment.</p>
-            <CancellationRows stages={["Before your package consultation", "After the package consultation, before feedback begins", "After the first round of feedback is delivered"]} />
+          <p className="mb-2.5 min-h-5 text-sm text-brand-muted" role="status">
+            {formatCopy(copy.career.experienceStatus, { band: selectedCareerBand.label })}
+            {careerBand === "7-10" || careerBand === "10+" ? ` ${copy.career.exactTenNote}` : ""}
+          </p>
+          <div className={pricingCardsClassName}>{careerCards.map((item) => <PackageCard key={item.rate} {...item} service="career" copy={copy} extra={item.rate === "career-interview" ? {} : { band: careerBand }} />)}</div>
+          <Facts facts={copy.career.facts} />
+          <Terms title={copy.career.termsTitle}>
+            {copy.career.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            <CancellationRows copy={copy.cancellation} stages={copy.career.cancellationStages} />
           </Terms>
         </>
       )}
 
       {category === "admissions" && (
         <>
-          <div className={`${pricingPanelClassName} min-h-14 text-sm text-brand-muted`}>Each package covers one school and all essays it requires. Choose the level of feedback you need.</div>
-          <p className="mb-2.5 min-h-5 text-sm text-brand-muted">Prices are per school, including all required essays.</p>
-          <div className={pricingCardsClassName}>
-            {admissionsPackages.map((item) => <PackageCard key={item.rate} {...item} service="admissions" kicker="All required essays for one school" />)}
-          </div>
-          <div className={pricingFactsClassName}>
-            <p><strong>Coverage:</strong> one application to one school, including its personal statement, statement of purpose and supplementary essays.</p>
-            <p><strong>Timeline:</strong> six weeks from receipt of complete materials. Book at least eight weeks before your earliest deadline; ask about a shorter timeline before paying.</p>
-            <p><strong>Payment:</strong> full payment before work begins. Each school is priced separately; ask about a bundle for several schools.</p>
-          </div>
-          <Terms title="Feedback, CV reviews and cancellation">
-            <p>A feedback round returns your revised draft with tracked changes, comments and a written summary of what to work on next. Feedback is returned within 24–48 business hours, Monday–Friday, 9am–5pm WAT.</p>
-            <p>Priority support puts your submissions ahead of the queue, aiming for 24 hours rather than 48. It does not add weekend or after-hours availability.</p>
-            <p><strong>Basic CV review:</strong> written recommendations on structure, formatting and gaps. <strong>Detailed:</strong> a CV rewrite with changes marked up. <strong>Comprehensive:</strong> that rewrite plus a note on how the CV supports your essays.</p>
-            <CancellationRows stages={["Before your package consultation", "After the package consultation, before feedback begins", "After the first round of feedback is delivered"]} />
+          <div className={`${pricingPanelClassName} min-h-14 text-sm text-brand-muted`}>{copy.admissions.intro}</div>
+          <p className="mb-2.5 min-h-5 text-sm text-brand-muted">{copy.admissions.priceDescription}</p>
+          <div className={pricingCardsClassName}>{admissionCards.map((item) => <PackageCard key={item.rate} {...item} service="admissions" copy={copy} />)}</div>
+          <Facts facts={copy.admissions.facts} />
+          <Terms title={copy.admissions.termsTitle}>
+            {copy.admissions.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            <CancellationRows copy={copy.cancellation} stages={copy.admissions.cancellationStages} />
           </Terms>
-          <p className="my-2.5 text-sm text-brand-muted">For master’s, professional programmes, law school and other graduate admissions. PhD and MBA applications use separate pricing. Ask us about PhD support or a custom package.</p>
+          <p className="my-2.5 text-sm text-brand-muted">{copy.admissions.note}</p>
         </>
       )}
 
@@ -309,26 +272,19 @@ export default function ServicePricing() {
             </label>
             <label className="flex min-w-0 items-start gap-2.5 text-base font-normal">
               <input className="mt-0.5 size-4 accent-brand-orange" type="checkbox" checked={hasScholarshipAssessment} onChange={(event) => setHasScholarshipAssessment(event.target.checked)} />
-              <span>My scholarship has interviews or an assessment stage<small className="mt-1 block text-sm text-brand-muted">Uses the 5–6 essay band regardless of essay count.</small></span>
+              <span>{copy.scholarships.assessmentLabel}<small className="mt-1 block text-sm text-brand-muted">{copy.scholarships.assessmentHint}</small></span>
             </label>
           </div>
-          <p className="mb-2.5 min-h-5 text-sm text-brand-muted" role="status">{hasScholarshipAssessment ? "Prices use the 5–6 essay band for one scholarship." : essayCustomQuote ? "Send your essay list for a quote before payment." : `Prices cover ${effectiveEssayBand.label} for one scholarship.`}</p>
+          <p className="mb-2.5 min-h-5 text-sm text-brand-muted" role="status">
+            {hasScholarshipAssessment ? copy.scholarships.assessmentStatus : essayCustomQuote ? copy.scholarships.quoteStatus : formatCopy(copy.scholarships.bandStatus, { band: effectiveEssayBand.label })}
+          </p>
           <div className={pricingCardsClassName}>
-            {scholarshipPackages.map((item, index) => (
-              <PackageCard key={item.rate} title={item.title} price={effectiveEssayBand.prices[index]} unit={essayCustomQuote ? "For 7 or more essays" : "per scholarship"} description={item.description} inclusions={item.inclusions} rate={item.rate} offer={0} service="scholarships" extra={{ essays: effectiveEssayBand.value }} kicker={effectiveEssayBand.label} />
-            ))}
+            {scholarshipCards.map((item, index) => <PackageCard key={item.rate} {...item} price={scholarshipPrices[index]} unit={essayCustomQuote ? copy.scholarships.customQuoteUnit : copy.scholarships.unit} service="scholarships" copy={copy} extra={{ essays: effectiveEssayBand.value, ...(hasScholarshipAssessment ? { assessment: "true" } : {}) }} />)}
           </div>
-          <div className={pricingFactsClassName}>
-            <p><strong>Coverage:</strong> one price covers all essays in the selected band for one scholarship.</p>
-            <p><strong>Timeline:</strong> six weeks from receipt of complete materials. Book at least eight weeks before your deadline, or ask about a shorter timeline before paying.</p>
-            <p><strong>Payment:</strong> full payment before work begins. Each scholarship is a separate engagement; ask about bundles for more than one.</p>
-          </div>
-          <Terms title="Essay counting, feedback and cancellation">
-            <p>Each prompt asking for more than 200 words counts as an essay. Shorter answers are grouped as one. Send the application link if you’re unsure; we’ll confirm your band in writing before payment, at no charge.</p>
-            <p>Applications with interviews or assessment stages, including Rhodes, Gates Cambridge and Fulbright, use the 5–6 essay band regardless of essay count.</p>
-            <p>A feedback round returns your revised draft with tracked changes, comments and a written summary of what to work on next. Feedback is returned within 24–48 business hours, Monday–Friday, 9am–5pm WAT.</p>
-            <p>Submitting several scholarship essays together counts as one feedback round. Reference-letter review checks a referee’s draft against the scholarship criteria and your essay narrative.</p>
-            <CancellationRows stages={["Before your package consultation", "After the package consultation, before feedback begins", "After the first round of feedback is delivered"]} />
+          <Facts facts={copy.scholarships.facts} />
+          <Terms title={copy.scholarships.termsTitle}>
+            {copy.scholarships.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            <CancellationRows copy={copy.cancellation} stages={copy.scholarships.cancellationStages} />
           </Terms>
         </>
       )}
@@ -341,56 +297,35 @@ export default function ServicePricing() {
             </label>
             <label className={pricingLabelClassName} htmlFor="mba-payment">Payment plan
               <select className={pricingFieldClassName} id="mba-payment" value={paymentPlan} onChange={(event) => setPaymentPlan(event.target.value as "single" | "instalments")}>
-                <option value="single">One-time payment</option>
-                <option value="instalments">Two instalments (no volume discount)</option>
+                <option value="single">{copy.mba.paymentOptions.single}</option>
+                <option value="instalments">{copy.mba.paymentOptions.instalments}</option>
               </select>
             </label>
-            <p className="mb-0 text-sm text-brand-muted">Minimum three schools. One-time payment: 5% off from five schools; 10% off from ten.</p>
+            <p className="mb-0 text-sm text-brand-muted">{formatCopy(copy.mba.minimum, { five: String(pricing.mba.discountAtFive), ten: String(pricing.mba.discountAtTen) })}</p>
           </div>
-          <p className="mb-2.5 min-h-5 text-sm text-brand-muted" role="status">Totals for {schoolCount} schools · {paymentPlan === "single" ? "one-time payment" : "two instalments"}{discount ? ` · ${Math.round(discount * 100)}% volume discount applied` : ""}.</p>
-          <div className={pricingCardsClassName}>
-            {mbaPackages.map((item) => {
-              const total = Math.round(item.perSchool * schoolCount * (1 - discount));
-              const perSchool = Math.round(total / schoolCount);
-              return <PackageCard key={item.rate} title={item.title} price={total} unit={`for ${schoolCount} schools`} unitDetail={`${money(perSchool)} per school`} description={item.description} inclusions={item.inclusions} rate={item.rate} offer={3} service="mba" extra={mbaExtra} kicker={paymentPlan === "single" ? "One-time payment" : "Two instalments"} />;
+          <p className="mb-2.5 min-h-5 text-sm text-brand-muted" role="status">
+            {formatCopy(copy.mba.summary, {
+              schools: String(schoolCount),
+              payment: paymentPlan === "single" ? copy.mba.paymentOptions.single.toLowerCase() : copy.mba.paymentOptions.instalments.toLowerCase(),
+              discount: mbaDiscountText,
             })}
-          </div>
-          <div className={pricingFactsClassName}>
-            <p><strong>Minimum:</strong> every MBA engagement covers at least three schools. Essay rounds are counted per school.</p>
-            <p><strong>Timeline:</strong> eight weeks from receipt of complete materials. Delays in sending drafts move the finish date back.</p>
-            <p><strong>Payment:</strong> full payment or the first instalment before work begins. Two instalments are available without a volume discount; instalment amounts and dates are confirmed before payment.</p>
-          </div>
-          <Terms title="Volume discounts, package terms and cancellation">
-            <p>One-time payment receives 5% off from five schools, or 10% off from ten. These discounts do not apply to the two-instalment plan.</p>
-            <p>Brainstorming happens before drafting. Essay rounds return tracked changes, comments and a written summary. The strategy call covers school selection and positioning across your list.</p>
-            <p><strong>Scholarship guidance:</strong> Basic identifies school funding. Comprehensive adds eligibility screening and deadline mapping. Full also includes work on scholarship essays.</p>
-            <p>Confirm the scope of CV and recommender-letter work when choosing your package. Schools and scholarship providers make admission and funding decisions.</p>
-            <CancellationRows stages={["Before your first brainstorming session", "After brainstorming, before essay feedback begins", "After the first round of essay feedback is delivered"]} />
+          </p>
+          <div className={pricingCardsClassName}>{mbaCards.map((item) => <PackageCard key={item.rate} {...item} service="mba" copy={copy} extra={mbaExtra} />)}</div>
+          <Facts facts={copy.mba.facts} />
+          <Terms title={copy.mba.termsTitle}>
+            {copy.mba.paragraphs.map((paragraph, index) => <p key={paragraph}>{index === 0 ? formatCopy(paragraph, { five: String(pricing.mba.discountAtFive), ten: String(pricing.mba.discountAtTen) }) : paragraph}</p>)}
+            <CancellationRows copy={copy.cancellation} stages={copy.mba.cancellationStages} />
           </Terms>
         </>
       )}
 
       <aside className="mt-4 flex items-center justify-between gap-5 rounded-md bg-brand-sage p-4 max-md:flex-col max-md:items-start">
-        <div><h3 className="mb-1.5 font-display text-xl font-bold">Not sure which option fits?</h3><p className="mb-0 max-w-xl text-sm text-brand-muted">The initial 15-minute discovery call is free. We’ll confirm your package, timeline and what to send before you pay.</p></div>
+        <div><h3 className="mb-1.5 font-display text-xl font-bold">{copy.callout.title}</h3><p className="mb-0 max-w-xl text-sm text-brand-muted">{copy.callout.description}</p></div>
         <div className="flex shrink-0 flex-wrap items-center gap-3.5">
-          <Link href="/consultation?mode=call">
-            <Button variant="brand">Book a free 15-minute call</Button>
-          </Link>
-          <Link className="text-base text-brand-purple font-bold underline" href="/consultation">Ask about a custom package</Link>
+          <Link href="/consultation?mode=call"><Button variant="brand">{copy.callout.primaryLink}</Button></Link>
+          <Link className="text-base text-brand-purple font-bold underline" href="/consultation">{copy.callout.secondaryLink}</Link>
         </div>
       </aside>
     </section>
-  );
-}
-
-function CancellationRows({ stages }: { stages: string[] }) {
-  return (
-    <>
-      <h3 className="mb-1 mt-3 border-t border-brand-line pt-2.5 font-display text-base font-bold">Cancellation and refunds</h3>
-      <div className="flex justify-between gap-4 border-b border-brand-line py-2 text-sm"><span>{stages[0]}</span><strong className="whitespace-nowrap text-brand-purple">Full refund</strong></div>
-      <div className="flex justify-between gap-4 border-b border-brand-line py-2 text-sm"><span>{stages[1]}</span><strong className="whitespace-nowrap text-brand-purple">50% refund</strong></div>
-      <div className="flex justify-between gap-4 border-b border-brand-line py-2 text-sm"><span>{stages[2]}</span><strong className="whitespace-nowrap text-brand-purple">No refund</strong></div>
-      <p>Refunds return to the original payment method within 5–10 business days.</p>
-    </>
   );
 }

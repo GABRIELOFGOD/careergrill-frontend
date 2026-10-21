@@ -3,65 +3,81 @@
 import { Button, buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { apiRequest, apiUrl } from "@/lib/api";
-import { contentHref, sampleContent, type ContentType, type SiteContent } from "@/lib/site-data";
+import { contentHref, type ContentType, type SiteContent } from "@/lib/site-data";
+import { buildConsultationMessage, consultationDropdownServices, createPricingSummary, initialDropdownService, parsePricingSelection, type ConsultationServiceKey, type ConsultationServices } from "@/lib/consultation";
+import type { HomeMarketingCopy } from "@/lib/public-copy";
+import type { ServicePricingConfig } from "@/lib/service-pricing";
 import { Eyebrow } from "@/components/site-shell";
 import RichContent from "@/components/rich-content";
+import ResourceToolDetail from "@/components/resource-tool-detail";
+import { usePublicCopy } from "./use-public-copy";
 import { cn } from "@/lib/utils";
 import PageHeader from "./ui/page-header";
 import Container from "./container";
 
 export function HomePage() {
-  const resources = sampleContent.filter((item) => item.type === "resource");
-  const featuredArticle = sampleContent.find((item) => item.type === "article" && item.slug === "explain-programme-fit");
+  const { copy, error: copyError, loading: copyLoading } = usePublicCopy();
+  const { items: resources } = usePublicContent("resource");
+  const { items: articles } = usePublicContent("article");
+  const { items: testimonials, error: testimonialError } = usePublicContent("testimonial");
+  const featuredArticle = articles.find((item) => item.data.featured === true) ?? articles[0];
+  const featuredTestimonial = testimonials[0];
+  if (!copy) {
+    return <p className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-8" role={copyLoading ? "status" : "alert"}>
+      {copyLoading ? "Loading site content…" : `Site content could not be loaded: ${copyError}`}
+    </p>;
+  }
+  const home = copy.home;
   return (
     <>
       <section className="mx-auto grid min-h-155 w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 py-12 sm:px-8 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:px-10 lg:py-16">
         <div>
-          <Eyebrow>Jobs, scholarships &amp; application support</Eyebrow>
-          <h1 className="mb-4 max-w-2xl text-5xl tracking-tight sm:text-[4rem] sm:leading-[1.13]">Find opportunities.<br />Prepare a stronger <span className="text-brand-orange-dark">application</span>.</h1>
-          <p className="mb-7 max-w-xl text-xl leading-relaxed text-brand-muted">Explore jobs and scholarships. Get AI feedback on your preparation, or speak to Careergrill about support with your CV, essays or interviews.</p>
+          <Eyebrow>{home.hero.eyebrow}</Eyebrow>
+          <h1 className="mb-4 max-w-2xl text-5xl tracking-tight sm:text-[4rem] sm:leading-[1.13]">{home.hero.title}<br />{home.hero.titleLead} <span className="text-brand-orange-dark">{home.hero.titleAccent}</span></h1>
+          <p className="mb-7 max-w-xl text-xl leading-relaxed text-brand-muted">{home.hero.description}</p>
           <div className="flex flex-wrap items-center gap-3">
-            <Link className={buttonVariants({ variant: "brand" })} href="/jobs">Find jobs</Link>
-            <Link className={buttonVariants({ variant: "outline" })} href="/scholarships">Find scholarships</Link>
-            <Link className="inline-flex items-center gap-2 font-semibold text-brand-orange-dark underline underline-offset-4 hover:no-underline" href="/consultation">Ask about a document review</Link>
+            <Link className={buttonVariants({ variant: "brand" })} href={home.hero.buttons[0].href}>{home.hero.buttons[0].label}</Link>
+            <Link href={home.hero.buttons[1].href}>
+              <Button variant={"outline"}>{home.hero.buttons[1].label}</Button>
+            </Link>
+            <Link className="inline-flex items-center gap-2 font-semibold text-brand-ink hover:text-brand-orange-dark underline underline-offset-4 hover:no-underline" href={home.hero.buttons[2].href}>{home.hero.buttons[2].label}</Link>
           </div>
-          <p className="mb-0 mt-6 text-base text-brand-muted">For your job search, study, scholarship or fellowship application.</p>
+          <p className="mb-0 mt-6 text-base text-brand-muted">{home.hero.qualifier}</p>
         </div>
         <aside className="relative overflow-hidden rounded-2xl border border-brand-purple bg-brand-ink px-7 pb-6 pt-8 text-white shadow-[12px_12px_0_#eee8f4] after:absolute after:-right-10 after:-top-20 after:size-52 after:rounded-full after:border after:border-white/15 after:shadow-[0_0_0_20px_rgba(255,255,255,.035),0_0_0_42px_rgba(255,255,255,.03)] sm:px-8">
           <div className="mb-7 flex justify-between gap-3 border-b border-white/20 pb-4 text-sm font-bold uppercase tracking-widest text-[#d2cbdc]"><span>Careergrill / Career Audit</span><span className="rounded-md bg-[#493168] px-2.5 py-1 text-xs text-white">Example</span></div>
-          <Eyebrow className="mb-2 text-brand-footer-hover">Your application direction</Eyebrow>
-          <h2 className="relative z-10 max-w-xs text-3xl leading-tight text-white">What your AI<br />audit covers.</h2>
-          {["What you can build on", "What needs attention", "Actions to work on next"].map((title, index) => <div className="relative z-10 grid grid-cols-[3rem_1fr] gap-4 border-b border-white/20 py-3 sm:gap-5 sm:py-4" key={title}><span className="grid size-12 place-items-center rounded-lg bg-brand-purple text-lg text-brand-footer-hover">0{index + 1}</span><div><strong className="text-lg">{title}</strong><p className="mb-0 mt-1 text-base text-[#d2cbdc]">{["Connect your experience to your next step.", "Spot missing details before you start drafting.", "A focused plan you can act on."][index]}</p></div></div>)}
-          <Link href="/career-audit" className="relative z-10 mt-4 inline-flex font-semibold text-[#ffc29f] hover:underline">Open an example assessment ↗</Link>
-          <div className="-mx-7 -mb-6 mt-5 bg-brand-sage px-7 py-3 text-base text-brand-ink sm:-mx-8 sm:px-8">✦ Feedback based on the details you share.</div>
+          <Eyebrow className="mb-2 text-brand-footer-hover">{home.auditExample.eyebrow}</Eyebrow>
+          <h2 className="relative z-10 max-w-xs whitespace-pre-line text-3xl leading-tight text-white">{home.auditExample.title}</h2>
+          {home.auditExample.steps.map((step, index) => <div className="relative z-10 grid grid-cols-[3rem_1fr] gap-4 border-b border-white/20 py-3 sm:gap-5 sm:py-4" key={step.title}><span className="grid size-12 place-items-center rounded-lg bg-brand-purple text-lg text-brand-footer-hover">{String(index + 1).padStart(2, "0")}</span><div><strong className="text-lg">{step.title}</strong><p className="mb-0 mt-1 text-base text-[#d2cbdc]">{step.description}</p></div></div>)}
+          <Link href="/career-audit" className="relative z-10 mt-4 inline-flex font-semibold text-[#ffc29f] hover:underline">{home.auditExample.link} ↗</Link>
+          <div className="-mx-7 -mb-6 mt-5 bg-brand-sage px-7 py-3 text-base text-brand-ink sm:-mx-8 sm:px-8">✦ {home.auditExample.footer}</div>
         </aside>
       </section>
       <section className="bg-white py-16">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-8">
-          <div className="mb-7 flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-start"><div><Eyebrow>Start with what you need</Eyebrow><h2 className="mb-0 text-4xl">Choose your next step.</h2></div><Link className="inline-flex items-center gap-2 font-semibold text-brand-orange-dark hover:underline" href="/services">See all services</Link></div>
+          <div className="mb-7 flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-start"><div><Eyebrow>{home.features.eyebrow}</Eyebrow><h2 className="mb-0 text-4xl">{home.features.title}</h2></div><Link className="inline-flex items-center gap-2 font-semibold text-brand-orange-dark hover:underline" href="/services">See all services</Link></div>
           <div className="grid gap-px overflow-hidden rounded border border-brand-line bg-brand-line sm:grid-cols-2 lg:grid-cols-3">
-            <FeatureCard number="01 / JOB SEARCH" title="Find jobs and internships." body="Explore jobs and internships, check what employers ask for and organise your applications." href="/jobs" link="Find jobs" />
-            <FeatureCard number="02 / SCHOLARSHIPS" title="Find funding for your study." body="Search by study level, destination and funding type, then save opportunities to check." href="/scholarships" link="Explore scholarships" />
-            <FeatureCard number="03 / REVISE" title="Get feedback on your draft." body="Ask about a review of your statement, CV or essay. Share the instructions and deadline to discuss the work and fee." href="/consultation" link="Ask about a review" />
-            <FeatureCard number="04 / PREPARE" title="Review your preparation with AI." body="Describe your goals and experience. Get AI feedback for your job search, study, scholarship or fellowship application." href="/career-audit" link="Start an AI Career Audit" />
+            {home.features.cards.map((card) => <FeatureCard key={card.number} {...card} />)}
           </div>
         </div>
       </section>
       <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid gap-8 py-16 md:grid-cols-2">
-        <div><Eyebrow>See the thinking</Eyebrow><h2 className="text-4xl">What does useful feedback look like?</h2><p className="text-base text-brand-muted">A good review explains why something needs to change and how to improve it.</p><p className="text-sm text-brand-muted">Illustrative example. This is not a client testimonial.</p></div>
-        <div className="rounded-md border border-brand-line bg-brand-footer p-6"><span className="mb-3 block text-xs font-bold uppercase tracking-widest text-brand-muted">SOP feedback / example</span><blockquote className="border-l-4 border-brand-orange pl-4 text-xl leading-relaxed">“I want to study public policy because I am passionate about making a difference.”</blockquote><div className="bg-[#fff5ef] p-4"><strong>Give the reader something they can assess.</strong><p className="mb-0 mt-2 text-sm leading-relaxed text-brand-muted">Which policy issue have you worked on? What did you observe? What question do you now need this programme to help you answer?</p></div><Link href="/services" className="mt-3 inline-flex font-semibold text-brand-orange-dark underline underline-offset-4 hover:no-underline">See how application review works</Link></div>
+        <div><Eyebrow>{home.feedbackExample.eyebrow}</Eyebrow><h2 className="text-4xl">{home.feedbackExample.title}</h2><p className="text-base text-brand-muted">{home.feedbackExample.description}</p><p className="text-sm text-brand-muted">{home.feedbackExample.disclaimer}</p></div>
+        <div className="rounded-md border border-brand-line bg-brand-footer p-6"><span className="mb-3 block text-xs font-bold uppercase tracking-widest text-brand-muted">{home.feedbackExample.quoteLabel}</span><blockquote className="border-l-4 border-brand-orange pl-4 text-xl leading-relaxed">“{home.feedbackExample.quote}”</blockquote><div className="bg-[#fff5ef] p-4"><strong>{home.feedbackExample.insightTitle}</strong><p className="mb-0 mt-2 text-sm leading-relaxed text-brand-muted">{home.feedbackExample.insightDescription}</p></div><Link href="/services" className="mt-3 inline-flex font-semibold text-brand-orange-dark underline underline-offset-4 hover:no-underline">{home.feedbackExample.link}</Link></div>
       </section>
-      <section className="bg-brand-blue py-16"><div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid items-center gap-7 md:grid-cols-2"><div><Eyebrow>Client feedback</Eyebrow><h2 className="text-4xl">A stronger application should still sound like you.</h2><p className="text-base text-brand-muted">Read Hameedah’s feedback on Careergrill’s statement of purpose support.</p><Link href="/client-feedback" className="font-semibold text-brand-orange-dark underline underline-offset-4 hover:no-underline">Read client feedback</Link></div><article className="rounded-md border border-brand-line bg-brand-footer p-6"><span className="text-xs font-bold uppercase tracking-widest text-brand-muted">Client feedback / Statement support</span><h3 className="my-3 font-display text-xl font-bold">Statement support in the applicant’s voice.</h3><p className="mb-0 text-sm leading-relaxed text-brand-muted">Hameedah Abdrasheed-Babatunde shares her perspective on Careergrill’s statement of purpose support.</p></article></div></section>
+      <section className="bg-brand-blue py-16"><div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid items-center gap-7 md:grid-cols-2"><div><Eyebrow>{home.testimonial.eyebrow}</Eyebrow><h2 className="text-4xl">{home.testimonial.title}</h2><Link href="/client-feedback" className="font-semibold text-brand-orange-dark underline underline-offset-4 hover:no-underline">{home.testimonial.link}</Link></div>{featuredTestimonial ? <article className="rounded-md border border-brand-line bg-brand-footer p-6"><span className="text-xs font-bold uppercase tracking-widest text-brand-muted">{featuredTestimonial.category || "Client feedback"}</span><h3 className="my-3 font-display text-xl font-bold">{featuredTestimonial.title}</h3><RichContent value={featuredTestimonial.body} className="mb-3 text-sm leading-relaxed text-brand-muted" /><small>{String(featuredTestimonial.data.author ?? featuredTestimonial.title)}</small></article> : testimonialError ? <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{testimonialError}</p> : <p className="mb-0 text-sm text-brand-muted">{home.testimonial.empty}</p>}</div></section>
       <section className="py-16">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-8">
-          <div className="mb-7 flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-start"><div><Eyebrow>Useful before you apply</Eyebrow><h2 className="mb-0 text-4xl">Build a better first draft.</h2></div><div className="flex flex-wrap gap-4"><Link className="font-semibold text-brand-orange-dark hover:underline" href="/resources">Explore resources</Link><Link className="font-semibold text-brand-orange-dark hover:underline" href="/blog">Read application guides</Link></div></div>
+          <div className="mb-7 flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-start"><div><Eyebrow>{home.resources.eyebrow}</Eyebrow><h2 className="mb-0 text-4xl">{home.resources.title}</h2></div><div className="flex flex-wrap gap-4"><Link className="font-semibold text-brand-orange-dark hover:underline" href="/resources">{home.resources.resourcesLink}</Link><Link className="font-semibold text-brand-orange-dark hover:underline" href="/blog">{home.resources.blogLink}</Link></div></div>
           <div className="grid gap-4 md:grid-cols-3">{resources.slice(0, 3).map((item) => <article className="flex min-h-52 flex-col rounded-md border border-brand-line bg-brand-footer p-5" key={item.id}><span className="text-xs font-bold uppercase tracking-widest text-brand-muted">{item.category} / {String(item.data.format ?? "Checklist")}</span><h3 className="mb-2 mt-3 font-display text-lg font-bold"><Link href={`/resources/${item.slug}`}>{item.title}</Link></h3><p className="text-sm text-brand-muted">{item.excerpt}</p><Link className="mt-auto font-semibold text-brand-orange-dark underline underline-offset-4 hover:no-underline" href={`/resources/${item.slug}`}>Open {String(item.data.format ?? "checklist").toLowerCase()}</Link></article>)}</div>
         </div>
       </section>
-      {featuredArticle && <section className="bg-brand-cream py-10"><div className="mx-auto w-full max-w-7xl px-4 sm:px-8 flex items-center justify-between gap-6 max-md:flex-col max-md:items-start"><div><Eyebrow>From the blog</Eyebrow><h2 className="mb-2 max-w-2xl text-3xl">{featuredArticle.title}</h2><p className="max-w-3xl text-sm text-brand-muted">{featuredArticle.excerpt}</p><Link className={buttonVariants({ variant: "outline", size: "sm" })} href={`/blog/${featuredArticle.slug}`}>Read the step-by-step guide</Link></div><Link className="font-semibold text-brand-ink underline underline-offset-4 hover:no-underline" href="/blog">Browse the blog ↗</Link></div></section>}
-      <Callout />
+      {featuredArticle && <section className="bg-brand-cream py-10"><div className="mx-auto w-full max-w-7xl px-4 sm:px-8 flex items-center justify-between gap-6 max-md:flex-col max-md:items-start"><div className="flex flex-col gap-5"><Eyebrow>{home.article.eyebrow}</Eyebrow><h2 className="mb-2 max-w-2xl text-3xl">{featuredArticle.title}</h2><p className="max-w-3xl text-sm text-brand-muted">{featuredArticle.excerpt}</p><Link href={`/blog/${featuredArticle.slug}`}>
+        <Button variant={"outline"}>{home.article.readLink}</Button>
+      </Link></div><Link className="font-semibold text-brand-ink underline underline-offset-4 hover:no-underline" href="/blog">{home.article.browseLink} ↗</Link></div></section>}
+      <Callout copy={home.callout} />
     </>
   );
 }
@@ -70,30 +86,28 @@ function FeatureCard({ number, title, body, href, link }: { number: string; titl
   return <Link className="group flex min-h-64 flex-col bg-white p-6 transition hover:bg-brand-footer" href={href}><span className="mb-4 text-xs font-bold uppercase tracking-widest text-brand-eyebrow">{number}</span><h3 className="mb-3 font-display text-xl font-bold">{title}</h3><p className="mb-4 text-sm leading-relaxed text-brand-muted">{body}</p><span className="mt-auto inline-flex items-center gap-2 font-semibold text-brand-ink underline underline-offset-4 group-hover:no-underline">{link}</span></Link>;
 }
 
-function Callout() {
-  return <section className="bg-brand-cream py-20 text-center"><div className="mx-auto flex w-full max-w-7xl flex-col items-center px-4 sm:px-8"><Eyebrow>Your next step</Eyebrow><h2 className="mb-3 max-w-lg text-4xl">Choose how to get started.</h2><p className="mb-6 max-w-2xl text-base text-brand-muted">Start an AI Career Audit, or book a free 15-minute call to discuss Careergrill’s services.</p><div className="flex flex-wrap justify-center gap-3"><Link className={buttonVariants({ variant: "brand" })} href="/career-audit">Start an AI Career Audit</Link><Link className={buttonVariants({ variant: "outline" })} href="/consultation?mode=call">Book a free 15-minute call</Link></div></div></section>;
+function Callout({ copy }: { copy: HomeMarketingCopy["callout"] }) {
+  return <section className="bg-brand-cream py-20 text-center"><div className="mx-auto flex w-full max-w-7xl flex-col items-center px-4 sm:px-8"><Eyebrow>{copy.eyebrow}</Eyebrow><h2 className="mb-3 max-w-lg text-4xl">{copy.title}</h2><p className="mb-6 max-w-2xl text-base text-brand-muted">{copy.description}</p><div className="flex flex-wrap justify-center gap-3"><Link className={buttonVariants({ variant: "brand" })} href="/career-audit">{copy.auditLink}</Link><Link href="/consultation?mode=call">
+    <Button variant={"outline"}>{copy.consultationLink}</Button></Link></div></div></section>;
 }
 
-function usePublicContent(type: ContentType, initialItems: SiteContent[]) {
-  const [items, setItems] = useState(initialItems);
-  const [isLive, setIsLive] = useState(false);
+function usePublicContent(type: ContentType) {
+  const [items, setItems] = useState<SiteContent[]>([]);
+  const [error, setError] = useState("");
   useEffect(() => {
+    let active = true;
+    setError("");
     apiRequest<{ items: SiteContent[] }>(`/content?type=${type}`)
       .then((result) => {
-        setItems(result.items);
-        setIsLive(true);
+        if (active) setItems(result.items);
       })
-      .catch(() => setIsLive(false));
+      .catch((cause: unknown) => {
+        if (active) setError(cause instanceof Error ? cause.message : `Could not load ${type} content.`);
+      });
+    return () => { active = false; };
   }, [type]);
-  return { items, isLive };
+  return { items, error };
 }
-
-function PageIntro({ eyebrow, title, text, side }: { eyebrow: string; title: ReactNode; text: string; side?: ReactNode }) {
-  return <section className="bg-brand-sage"><div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-8 px-4 py-8 sm:px-8 max-md:flex-col max-md:items-start"><div><Eyebrow>{eyebrow}</Eyebrow><h1 className="mb-3 mt-2 text-4xl tracking-tight">{title}</h1><p className="mb-0 max-w-2xl text-base leading-relaxed text-brand-muted">{text}</p></div>{side}</div></section>;
-}
-
-const resourceTopics = ["All resources", "Graduate admissions", "Scholarships", "Career documents", "Fellowships", "MBA applications"];
-const resourceFormats = ["All formats", "Checklist", "Worksheet", "Template"];
 
 function ResourceCard({ item }: { item: SiteContent }) {
   const format = String(item.data.format ?? "Worksheet");
@@ -109,8 +123,9 @@ function ResourceCard({ item }: { item: SiteContent }) {
 }
 
 export function ResourcePage() {
-  const fallback = sampleContent.filter((item) => item.type === "resource");
-  const { items: resources, isLive } = usePublicContent("resource", fallback);
+  const { items: resources, error: resourceError } = usePublicContent("resource");
+  const resourceTopics = useMemo(() => ["All resources", ...new Set(resources.map((item) => item.category.trim()).filter(Boolean))], [resources]);
+  const resourceFormats = useMemo(() => ["All formats", ...new Set(resources.map((item) => String(item.data.format ?? "").trim()).filter(Boolean))], [resources]);
   const [topic, setTopic] = useState("All resources");
   const [query, setQuery] = useState("");
   const [format, setFormat] = useState("All formats");
@@ -162,7 +177,7 @@ export function ResourcePage() {
         </label>
         <button className="min-h-10 rounded border border-brand-line bg-white px-3 text-sm font-semibold hover:bg-brand-sage" type="button" onClick={() => { setTopic("All resources"); setFormat("All formats"); setQuery(""); }}>Reset</button>
       </div>
-      {!isLive && <p className="rounded border border-brand-line bg-brand-blue p-3 text-sm text-brand-muted">Showing the saved resource library while the live content service is unavailable.</p>}
+      {resourceError && <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">Resources could not be loaded: {resourceError}</p>}
       <p className="my-3 text-sm text-brand-muted" aria-live="polite">{visibleResources.length} {visibleResources.length === 1 ? "resource" : "resources"}</p>
       {visibleResources.length > 0
         ? <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{visibleResources.map((item) => <ResourceCard key={item.id} item={item} />)}</div>
@@ -180,36 +195,73 @@ export function ResourcePage() {
 }
 
 export function FeedbackPage() {
-  const { items } = usePublicContent("testimonial", []);
+  const [items, setItems] = useState<SiteContent[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingFeedback, setLoadingFeedback] = useState(true);
+  const [feedbackLoadError, setFeedbackLoadError] = useState("");
+  const [name, setName] = useState("");
+  const [context, setContext] = useState("");
+  const [feedbackText, setFeedbackText] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionNotice, setSubmissionNotice] = useState<{ message: string; isError: boolean } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingFeedback(true);
+    setFeedbackLoadError("");
+    apiRequest<{ items: SiteContent[]; total: number; totalPages: number }>(`/content/testimonials?page=${page}`)
+      .then((result) => {
+        if (!active) return;
+        setItems(result.items);
+        setTotal(result.total);
+        setTotalPages(result.totalPages);
+        if (page > result.totalPages) setPage(result.totalPages);
+      })
+      .catch((error: unknown) => {
+        if (active) setFeedbackLoadError(error instanceof Error ? error.message : "Could not load client feedback.");
+      })
+      .finally(() => {
+        if (active) setLoadingFeedback(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [page]);
+
+  async function submitFeedback(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setSubmissionNotice(null);
+    try {
+      const result = await apiRequest<{ message: string }>("/content/testimonials", {
+        method: "POST",
+        body: JSON.stringify({ name, context, feedback: feedbackText, consent }),
+      });
+      setSubmissionNotice({ message: result.message, isError: false });
+      setName("");
+      setContext("");
+      setFeedbackText("");
+      setConsent(false);
+    } catch (error) {
+      setSubmissionNotice({
+        message: error instanceof Error ? error.message : "Could not submit your feedback. Please try again.",
+        isError: true,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return <>
     <PageHeader
       header="client feedback"
       title="A client’s experience with Careergrill."
-      description="A client’s experience with Careergrill’s statement of purpose support."
+      description="Read approved client stories, or share your own experience for review."
     />
     <Container className="space-y-7 py-10 flex flex-col gap-10">
-      <article className="grid overflow-hidden rounded border border-brand-line bg-white md:grid-cols-2">
-        <div className="p-6 md:p-8">
-          <Eyebrow>Statement of purpose support</Eyebrow>
-          <h2 className="my-3 text-3xl">Keeping your experience<br />in your statement.</h2>
-          <blockquote className="my-5 border-l-2 border-brand-orange pl-4 text-lg leading-relaxed text-brand-muted">“…would walk you through writing your statement of purpose (SOP) in a perfectly fine manner that reflects not only your journey but who you are!”</blockquote>
-          <div className="mb-4 flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-full bg-brand-blue text-sm font-bold text-brand-purple" aria-hidden="true">HA</span>
-            <div className="grid"><strong>Hameedah Abdrasheed-Babatunde</strong><small className="text-sm text-brand-muted">On statement of purpose support</small></div>
-          </div>
-          <a className="text-xs text-brand-purple underline" href="https://careergrill.com" target="_blank" rel="noreferrer">Read the original testimonial ↗</a>
-        </div>
-        <div className="relative grid min-h-72 place-items-center bg-brand-blue p-6" role="img" aria-label="Careergrill application review: Choose the evidence, explain the connection, keep it yours.">
-          <span className="absolute left-5 top-5 text-xs font-semibold uppercase tracking-widest text-brand-purple">Application review</span>
-          <div className="w-full max-w-sm rotate-1 rounded bg-white p-5 shadow-lg">
-            <small className="mb-4 block text-xs font-semibold uppercase tracking-wide text-brand-muted">Your experience / your voice</small>
-            {["Choose the evidence.", "Explain the connection.", "Keep it yours."].map((label, index) => <div className="flex items-center gap-3 border-t border-brand-line py-3" key={label}><span className="font-display text-sm font-bold text-brand-orange">0{index + 1}</span><strong>{label}</strong></div>)}
-            <em className="mt-2 block text-right text-xs text-brand-muted">The story belongs to the applicant.</em>
-          </div>
-          <b className="absolute bottom-3 right-5 font-display text-5xl text-brand-purple" aria-hidden="true">c<span className="text-brand-orange">.</span></b>
-        </div>
-      </article>
       {items.map((item) => (
         <article className="grid overflow-hidden rounded border border-brand-line bg-white md:grid-cols-2" key={item.id}>
           <div className="p-6 md:p-8">
@@ -236,6 +288,38 @@ export function FeedbackPage() {
           </div>
         </article>
       ))}
+      {feedbackLoadError && <p className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-800" role="alert">{feedbackLoadError}</p>}
+      {loadingFeedback && <p className="text-sm text-brand-muted" role="status">Loading client feedback…</p>}
+      {!loadingFeedback && !feedbackLoadError && items.length === 0 && <p className="rounded border border-brand-line bg-white p-4 text-sm text-brand-muted">There are no additional published client stories yet.</p>}
+      {totalPages > 1 && <nav className="flex items-center justify-between gap-4" aria-label="Client feedback pages">
+        <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" disabled={page <= 1 || loadingFeedback} onClick={() => setPage((current) => current - 1)}>Previous</button>
+        <span className="text-sm text-brand-muted" aria-live="polite">Page {page} of {totalPages} · {total} published {total === 1 ? "story" : "stories"}</span>
+        <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" disabled={page >= totalPages || loadingFeedback} onClick={() => setPage((current) => current + 1)}>Next</button>
+      </nav>}
+      <section className="grid gap-5 rounded-lg border border-brand-line bg-white p-5 sm:p-7" aria-labelledby="share-feedback-title">
+        <div>
+          <Eyebrow>Share your experience</Eyebrow>
+          <h2 id="share-feedback-title" className="mb-2 text-2xl">Write client feedback.</h2>
+          <p className="mb-0 text-sm leading-relaxed text-brand-muted">Tell others about your experience with Careergrill. Every submission is reviewed before it can appear publicly.</p>
+        </div>
+        <form className="grid gap-4 [&_input:not([type=checkbox])]:min-h-10 [&_input:not([type=checkbox])]:rounded [&_input:not([type=checkbox])]:border [&_input:not([type=checkbox])]:border-brand-line [&_input:not([type=checkbox])]:px-3 [&_input:not([type=checkbox])]:py-2 [&_textarea]:rounded [&_textarea]:border [&_textarea]:border-brand-line [&_textarea]:px-3 [&_textarea]:py-2" onSubmit={(event) => void submitFeedback(event)}>
+          <label className="grid gap-1.5 text-sm font-semibold">Name to show if approved
+            <input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={100} autoComplete="name" required />
+          </label>
+          <label className="grid gap-1.5 text-sm font-semibold">What did you work with Careergrill on? <span className="font-normal text-brand-muted">(optional)</span>
+            <input value={context} onChange={(event) => setContext(event.target.value)} maxLength={100} placeholder="For example, statement of purpose support" />
+          </label>
+          <label className="grid gap-1.5 text-sm font-semibold">Your feedback
+            <textarea value={feedbackText} onChange={(event) => setFeedbackText(event.target.value)} minLength={20} maxLength={5000} rows={6} required placeholder="Share what your experience was like and what was helpful." />
+          </label>
+          <label className="flex items-start gap-2 text-sm leading-relaxed text-brand-muted">
+            <input className="mt-1" type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} required />
+            I agree that Careergrill may publish my feedback and the name above if it is approved.
+          </label>
+          <button className={`${buttonVariants({ variant: "brand", size: "sm" })} justify-self-start`} disabled={submitting}>{submitting ? "Submitting…" : "Submit feedback"}</button>
+          {submissionNotice && <p className={`mb-0 rounded border p-3 text-sm ${submissionNotice.isError ? "border-red-300 bg-red-50 text-red-800" : "border-brand-line bg-brand-blue"}`} role={submissionNotice.isError ? "alert" : "status"}>{submissionNotice.message}</p>}
+        </form>
+      </section>
       <aside className="flex items-center justify-between gap-5 rounded bg-brand-sage p-5 max-md:flex-col max-md:items-start">
         <div><h2 className="mb-1 text-xl font-bold">Want to discuss your own application?</h2><p className="mb-0 text-sm text-brand-muted">Bring your goal and the part of the process you need help with.</p></div>
         <Link className={buttonVariants({ variant: "brand", size: "sm" })} href="/consultation?mode=call">Book a free 15-minute call</Link>
@@ -245,37 +329,195 @@ export function FeedbackPage() {
 }
 
 export function FaqPage() {
-  const { items: cmsFaqs } = usePublicContent("faq", []);
-  const groups: { title: string; questions: string[] }[] = [
-    { title: "AI Career Audit", questions: ["Can I use the audit for my job search?", "Who produces the feedback?", "Do I need to sign in?", "Does the AI read a link or my full CV automatically?", "What if generation fails?", "Can I change my answers?"] },
-    { title: "Opportunities & saved work", questions: ["Does a search result confirm that I am eligible?", "What does “Status needs checking” mean?", "Does saving a listing submit an application?", "Where are my worksheet notes saved?"] },
-    { title: "Consultations & paid support", questions: ["What is included in the free 15-minute call?", "How much do paid services cost?", "Does preparing an enquiry send it?", "Can Careergrill guarantee a job, admission or scholarship?"] },
-  ];
-  return <><PageIntro eyebrow="Help & FAQs" title={<>Answers before<br /><em>your next step.</em></>} text="How the audit, opportunity directory and Careergrill support work." /><section className="mx-auto w-full max-w-7xl px-4 sm:px-8 space-y-6 py-7">{groups.map(({ title, questions }) => <section className="rounded border border-brand-line bg-white p-5" key={title}><h2 className="mb-4 text-2xl">{title}</h2>{questions.map((question) => <details className="border-t border-brand-line py-3" key={question}><summary className="cursor-pointer font-semibold marker:text-brand-orange">{question}</summary><p className="mb-0 mt-3 leading-relaxed text-brand-muted">{question.includes("guarantee") ? "No. Careergrill can help you make a stronger, more considered application, but decisions remain with employers, institutions and funders." : question.includes("saved") || question.includes("listing") ? "Saving a listing keeps it in your private workspace. It does not submit an application or confirm eligibility. Check the official source and keep your notes current." : "You stay in control of what you share. Review the privacy page for details about account storage and AI processing."}</p></details>)}</section>)}{cmsFaqs.length > 0 && <section className="rounded border border-brand-line bg-white p-5"><h2 className="mb-4 text-2xl">More answers</h2>{cmsFaqs.map((item) => <details className="border-t border-brand-line py-3" key={item.id}><summary className="cursor-pointer font-semibold marker:text-brand-orange">{item.title}</summary><RichContent value={item.body} className="text-sm leading-relaxed text-brand-muted mt-3 text-brand-muted" /><Link className="mt-3 inline-block font-semibold text-brand-purple hover:underline" href={contentHref("faq", item.slug)}>Open full answer ↗</Link></details>)}</section>}<div className="flex items-center justify-between gap-4 rounded bg-brand-sage p-5 max-sm:flex-col max-sm:items-start"><h2 className="mb-0 text-xl font-bold">Still have a question?</h2><Link className={buttonVariants({ variant: "brand", size: "sm" })} href="/consultation?mode=call">Arrange a free 15-minute call</Link></div></section></>;
+  const [faqs, setFaqs] = useState<{ id: string; title: string; body: string; category: string }[]>([]);
+  const [faqError, setFaqError] = useState("");
+  const [faqLoading, setFaqLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    void apiRequest<{ items: typeof faqs }>("/content/faqs")
+      .then(({ items }) => { if (active) setFaqs(items); })
+      .catch((error: unknown) => { if (active) setFaqError(error instanceof Error ? error.message : "Could not load FAQs."); })
+      .finally(() => { if (active) setFaqLoading(false); });
+    return () => { active = false; };
+  }, []);
+  const groups = useMemo(() => {
+    const grouped = new Map<string, typeof faqs>();
+    faqs.forEach((faq) => {
+      const category = faq.category.trim() || "General questions";
+      grouped.set(category, [...(grouped.get(category) ?? []), faq]);
+    });
+    return Array.from(grouped, ([title, questions]) => ({ title, questions }));
+  }, [faqs]);
+  return <section className="min-h-screen bg-brand-cream px-4 py-8 sm:px-8">
+    <div className="mx-auto w-full max-w-xl">
+      <header className="border-b border-brand-line pb-6">
+        <Eyebrow>Help &amp; FAQs</Eyebrow>
+        <h1 className="mb-3 mt-2 text-4xl tracking-tight">Help with audits, opportunities and services.</h1>
+        <p className="mb-0 text-sm leading-relaxed text-brand-muted">Find the support you need, understand what you’re booking and keep track of your saved work.</p>
+      </header>
+      {faqError && <p className="mt-5 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{faqError}</p>}
+      {faqLoading && <p className="mt-5 text-sm text-brand-muted" role="status">Loading FAQs…</p>}
+      {!faqLoading && !faqError && !groups.length && <p className="mt-5 rounded border border-brand-line bg-white p-4 text-sm text-brand-muted">There are no FAQs to display yet.</p>}
+      {groups.map((group) => <section className="border-b border-brand-line py-5" key={group.title}>
+        <h2 className="mb-2 text-lg font-bold">{group.title}</h2>
+        {group.questions.map((faq) => <details className="border-t border-brand-line py-3" key={faq.id}>
+          <summary className="cursor-pointer text-sm font-semibold marker:text-brand-purple">{faq.title}</summary>
+          <RichContent value={faq.body} className="mt-3 text-sm leading-relaxed text-brand-muted [&_p]:mb-3 [&_p:last-child]:mb-0 [&_a]:text-brand-purple" />
+        </details>)}
+      </section>)}
+      <section className="py-5">
+        <h2 className="mb-1 text-lg font-bold">Still have a question?</h2>
+        <p className="mb-3 text-sm leading-relaxed text-brand-muted">Tell us what you’re working on and the help you need.</p>
+        <ul className="mb-0 list-disc space-y-1 pl-5 text-sm">
+          <li><Link className="font-semibold text-brand-purple underline" href="/consultation">Draft a service enquiry</Link></li>
+          <li><Link className="font-semibold text-brand-purple underline" href="/consultation?mode=call">Book a free 15-minute call</Link></li>
+        </ul>
+      </section>
+    </div>
+  </section>;
 }
 
 export function PrivacyPage() {
-  return <><PageIntro eyebrow="Your information" title={<>What you share.<br /><em>Where it is used.</em></>} text="Privacy information for the Careergrill website." /><article className="mx-auto w-full max-w-7xl px-4 sm:px-8 space-y-4 py-7"><p className="mb-0 text-sm text-brand-muted">Updated 15 October 2026</p><h2 className="mb-0 mt-3 text-2xl">Your account and saved work</h2><p className="leading-relaxed text-brand-muted">Signing in connects your account identifier, name and email to your saved workspace. Careergrill stores saved opportunities, application notes and preferences so you can return to them. Workspace access is scoped to your signed-in account.</p><h2 className="mb-0 mt-3 text-2xl">AI-generated content</h2><p className="leading-relaxed text-brand-muted">When an administrator asks an AI provider to draft website content, only the prompt and any selected reference documents are sent to that provider. API credentials stay encrypted on the server and are never included in the website response. Generated content remains a draft until an administrator reviews and publishes it.</p><p className="leading-relaxed text-brand-muted">If you choose to submit an audit, your answers are sent to the configured AI provider to generate feedback. Do not include passwords, identification numbers, contact details or confidential third-party information.</p><h2 className="mb-0 mt-3 text-2xl">Drafts and resource worksheets</h2><p className="leading-relaxed text-brand-muted">Unsaved worksheet notes use this browser tab’s session storage. They do not automatically sync across devices. Download or save work you want to keep.</p><h2 className="mb-0 mt-3 text-2xl">Enquiries and consultations</h2><p className="leading-relaxed text-brand-muted">A prepared enquiry remains in this tab until you copy it or choose to send it through email or WhatsApp. Those services and any linked booking provider process information under their own policies.</p><h2 className="mb-0 mt-3 text-2xl">Keeping and deleting information</h2><p className="leading-relaxed text-brand-muted">Saved work remains available in your account until you remove it or request its removal. You can delete individual saved opportunities and audits in your workspace. To request removal of account-linked information or ask about a copy, email <a className="font-semibold text-brand-purple hover:underline" href="mailto:info@careergrill.com">info@careergrill.com</a>. Hosting providers may retain operational records or backups under their own retention arrangements.</p><h2 className="mb-0 mt-3 text-2xl">Questions</h2><p className="leading-relaxed text-brand-muted">Contact <a className="font-semibold text-brand-purple hover:underline" href="mailto:info@careergrill.com">info@careergrill.com</a> about how your information is used or to report a concern.</p></article></>;
+  return <section className="min-h-screen bg-brand-cream px-4 py-8 sm:px-8">
+    <div className="mx-auto w-full max-w-xl">
+      <header className="border-b border-brand-line pb-6">
+        <Eyebrow>Your information</Eyebrow>
+        <h1 className="mb-3 mt-2 text-4xl tracking-tight">What you share.<br />Where it is used.</h1>
+        <p className="mb-0 text-sm leading-relaxed text-brand-muted">Privacy information for the Careergrill website. Updated 15 October 2026.</p>
+      </header>
+      <article>
+        <section className="border-b border-brand-line py-5">
+          <h2 className="mb-2 text-lg font-bold">Your account and saved work</h2>
+          <p className="mb-0 text-sm leading-relaxed text-brand-muted">Signing in connects your account identifier, name and email to your saved workspace. Careergrill stores saved opportunities, application notes, preferences, audit answers and feedback so you can return to them. You need to sign in to open your saved workspace.</p>
+        </section>
+        <section className="border-b border-brand-line py-5">
+          <h2 className="mb-2 text-lg font-bold">AI-generated feedback</h2>
+          <p className="mb-3 text-sm leading-relaxed text-brand-muted">When you choose Generate AI feedback, your audit answers are sent to OpenAI to produce an assessment. The request does not include your account name or email automatically. Anything you paste into an answer is included, so leave out contact details, identification numbers and confidential third-party information.</p>
+          <p className="mb-3 text-sm leading-relaxed text-brand-muted">Careergrill asks OpenAI not to save generated responses for later retrieval. OpenAI’s own processing and retention terms still apply. <a className="font-semibold text-brand-purple underline" href="https://openai.com/policies/privacy-policy/" target="_blank" rel="noreferrer">Read OpenAI’s privacy policy.</a></p>
+          <p className="mb-0 text-sm leading-relaxed text-brand-muted">The answers and resulting feedback are saved in Careergrill’s hosted account storage. Personal reviews and consultations are arranged separately.</p>
+        </section>
+        <section className="border-b border-brand-line py-5">
+          <h2 className="mb-2 text-lg font-bold">Drafts and resource worksheets</h2>
+          <p className="mb-0 text-sm leading-relaxed text-brand-muted">Unsaved audit drafts, enquiry drafts and worksheet notes use this browser tab’s temporary storage. They survive reloads in the same tab and are cleared when that session ends. They do not automatically sync across devices. Download or save work you want to keep.</p>
+        </section>
+        <section className="border-b border-brand-line py-5">
+          <h2 className="mb-2 text-lg font-bold">Enquiries and consultations</h2>
+          <p className="mb-0 text-sm leading-relaxed text-brand-muted">A prepared enquiry remains in this tab until you send it through email or WhatsApp. Those services and the linked booking provider process information under their own policies. A consultation and any paid human review are arranged separately from the AI audit.</p>
+        </section>
+        <section className="border-b border-brand-line py-5">
+          <h2 className="mb-2 text-lg font-bold">Keeping and deleting information</h2>
+          <p className="mb-0 text-sm leading-relaxed text-brand-muted">Saved work remains available in your account until you delete it or request its removal. You can delete individual audits in <Link className="font-semibold text-brand-purple underline" href="/my-audits">My audits</Link> and remove saved opportunities in your workspace. To request removal of other account-linked information or ask about a copy, email <a className="font-semibold text-brand-purple underline" href="mailto:info@careergrill.com">info@careergrill.com</a>. Hosting providers may retain operational records or backups under their own retention arrangements.</p>
+        </section>
+        <section className="py-5">
+          <h2 className="mb-2 text-lg font-bold">Questions</h2>
+          <p className="mb-0 text-sm leading-relaxed text-brand-muted">Careergrill uses hosting and AI service providers to operate these features. Contact <a className="font-semibold text-brand-purple underline" href="mailto:info@careergrill.com">info@careergrill.com</a> about how your information is used or to report a concern.</p>
+        </section>
+      </article>
+    </div>
+  </section>;
 }
 
 export function ConsultationPage() {
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode") === "call" ? "call" : "enquiry";
+  const [packageSelection, setPackageSelection] = useState(() => parsePricingSelection(new URLSearchParams(searchParams.toString())));
+  const packageSelectionRef = useRef(packageSelection);
+  const [service, setService] = useState<ConsultationServiceKey>("help");
+  const [serviceConfig, setServiceConfig] = useState<ConsultationServices | null>(null);
+  const [serviceConfigError, setServiceConfigError] = useState("");
+  const [serviceConfigLoading, setServiceConfigLoading] = useState(true);
+  const [pricing, setPricing] = useState<ServicePricingConfig | null>(null);
+  const [pricingLoadError, setPricingLoadError] = useState("");
   const [message, setMessage] = useState("");
-  const [service, setService] = useState("Help me choose the right support");
   const [goal, setGoal] = useState("");
   const [process, setProcess] = useState("");
   const [deadline, setDeadline] = useState("");
   const [details, setDetails] = useState("");
   const [prepared, setPrepared] = useState("");
+  const [previousMessage, setPreviousMessage] = useState("");
+  const [copiedNotice, setCopiedNotice] = useState("");
+  const preparedRef = useRef<HTMLTextAreaElement>(null);
+  const preparedMessage = useRef(prepared);
+  const packageSummary = useMemo(() => pricing ? createPricingSummary(packageSelection, pricing) : null, [packageSelection, pricing]);
+  const activeService = packageSelection ? packageSummary?.service ?? service : service;
+
+  useEffect(() => {
+    let active = true;
+    void apiRequest<{ pricing: ServicePricingConfig }>("/pricing")
+      .then(({ pricing: savedPricing }) => {
+        if (active) setPricing(savedPricing);
+      })
+      .catch((error: unknown) => {
+        if (active) setPricingLoadError(error instanceof Error ? error.message : "Updated service prices could not be loaded.");
+      });
+    void apiRequest<{ consultation_services: ConsultationServices }>("/config")
+      .then(({ consultation_services: services }) => {
+        if (!active) return;
+        setServiceConfig(services);
+        setService(initialDropdownService(packageSelectionRef.current, services));
+      })
+      .catch((error: unknown) => {
+        if (active) setServiceConfigError(error instanceof Error ? error.message : "Consultation information could not be loaded.");
+      })
+      .finally(() => { if (active) setServiceConfigLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    preparedMessage.current = prepared;
+  }, [prepared]);
+
+  function markMessageOutdated() {
+    if (!prepared) return;
+    setPreviousMessage(prepared);
+    setPrepared("");
+    setCopiedNotice("");
+    setMessage("Your details have changed. Update the message when ready. Your previous message is kept below so you can reuse any edits.");
+  }
+
   function prepare(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const text = `Hello Careergrill,\n\nI would like to discuss: ${service}.\nMy goal or next step: ${goal}${process ? `\nWhere I am in the process: ${process}` : ""}${deadline ? `\nMy deadline: ${deadline}` : ""}\n\nA little more context:\n${details || "No additional context yet."}\n\nPlease let me know the next step.`;
+    if (!serviceConfig) return;
+    const text = buildConsultationMessage({
+      service: activeService,
+      goal,
+      stage: process,
+      deadline,
+      details,
+      packageSummary,
+      services: serviceConfig,
+    });
     setPrepared(text);
-    setMessage("Your brief is ready. Choose when and how to send it.");
+    setMessage("Your message is ready to review. Copy it or open WhatsApp or email when you want to send it.");
+    setCopiedNotice("");
   }
+
+  async function copyMessage() {
+    if (!prepared.trim()) {
+      setCopiedNotice("Add a message before copying.");
+      return;
+    }
+    const copyVersion = prepared;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard access is unavailable.");
+      await navigator.clipboard.writeText(copyVersion);
+      setCopiedNotice(preparedMessage.current === copyVersion
+        ? "Message copied. Paste it into your preferred app to send it."
+        : "The earlier version was copied. Copy again to include your latest edit.");
+    } catch {
+      preparedRef.current?.focus();
+      preparedRef.current?.select();
+      setCopiedNotice("Your message is highlighted. Select Copy from your device’s menu to copy it.");
+    }
+  }
+  if (!serviceConfig) {
+    return <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-8">
+      {serviceConfigLoading ? <p role="status">Loading consultation information…</p> : <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">Consultation information could not be loaded from the backend: {serviceConfigError}</p>}
+    </section>;
+  }
+  const serviceDetails = serviceConfig[activeService];
+  const dropdownServices = consultationDropdownServices(serviceConfig);
   const callMessage = encodeURIComponent("Hello Careergrill, I would like to arrange a free 15-minute consultation. Please let me know what times are available.");
-  const services = ["Help me choose the right support", "Statement review · Admissions", "Application strategy · Admissions", "CV review & rewrite · Career documents", "LinkedIn support · Career documents", "Interview preparation · Career documents", "Application direction · MBA", "Essay development & review · MBA"];
   return <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 py-7">
     <Link className="mb-5 inline-block text-sm font-semibold text-brand-purple hover:underline" href="/services">← All services</Link>
     <header className="mb-6 max-w-3xl">
@@ -294,46 +536,87 @@ export function ConsultationPage() {
           <li>Agree a next step, if you want one</li>
         </ul>
         <p className="mb-0 text-sm leading-relaxed text-brand-muted">The 15-minute consultation is free. A full document review or ongoing application support is quoted separately before work begins.</p>
-        <a className={buttonVariants({ variant: "brand", size: "sm" })} href={`https://wa.me/2348168097950?text=${callMessage}`} target="_blank" rel="noreferrer">Arrange a time on WhatsApp</a>
+        <a className={buttonVariants({ variant: "brand", size: "sm" })} href={`https://wa.me/2348129982113?text=${callMessage}`} target="_blank" rel="noreferrer">Arrange a time on WhatsApp</a>
         <small className="text-xs text-brand-muted">Message Careergrill to ask about available times.</small>
       </article>
       <article className="grid content-start gap-3 rounded border border-brand-line bg-brand-blue p-5">
         <h2 className="mb-0 text-2xl">Prefer to arrange it by message?</h2>
         <p className="mb-0 text-sm leading-relaxed text-brand-muted">Send your goal and a few suitable times. Careergrill will confirm availability.</p>
-        <a className={buttonVariants({ variant: "outline", size: "sm" })} href={`https://wa.me/2348168097950?text=${callMessage}`} target="_blank" rel="noreferrer">Ask about a free call on WhatsApp</a>
+        <a className={buttonVariants({ variant: "outline", size: "sm" })} href={`https://wa.me/2348129982113?text=${callMessage}`} target="_blank" rel="noreferrer">Ask about a free call on WhatsApp</a>
         <Link className="text-sm font-semibold text-brand-purple hover:underline" href="/consultation">Draft a service enquiry</Link>
       </article>
     </div> : <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,.8fr)]">
       <form className="grid content-start gap-4 rounded border border-brand-line bg-white p-5" onSubmit={prepare}>
         <h2 className="mb-0 text-2xl">Draft your enquiry</h2>
-        <label className="grid gap-1.5 text-sm font-semibold">Service<select className="min-h-10 rounded border border-brand-line bg-white px-3 py-2 font-normal" value={service} onChange={(event) => setService(event.target.value)}>{services.map((item) => <option key={item}>{item}</option>)}</select></label>
-        <label className="grid gap-1.5 text-sm font-semibold">Your goal or next step<input className="min-h-10 rounded border border-brand-line px-3 py-2 font-normal" value={goal} onChange={(event) => setGoal(event.target.value)} required placeholder="For example, choosing between a job search and postgraduate study" /></label>
-        <label className="grid gap-1.5 text-sm font-semibold">Where are you in the process? (optional)<select className="min-h-10 rounded border border-brand-line bg-white px-3 py-2 font-normal" value={process} onChange={(event) => setProcess(event.target.value)}><option value="">Choose if helpful</option><option>I’m exploring my options</option><option>I’m starting an application</option><option>I have a draft</option><option>I have an interview invitation</option></select></label>
-        <label className="grid gap-1.5 text-sm font-semibold">Your deadline, if known<input className="min-h-10 rounded border border-brand-line px-3 py-2 font-normal" type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} /></label>
-        <label className="grid gap-1.5 text-sm font-semibold">What would you like us to know?<textarea className="rounded border border-brand-line px-3 py-2 font-normal" value={details} onChange={(event) => setDetails(event.target.value)} rows={4} placeholder="For example: I have a 500-word draft, but I’m struggling to connect my experience to the selection criteria." /></label>
+        <label className="grid gap-1.5 text-sm font-semibold">Service<select className="min-h-10 rounded border border-brand-line bg-white px-3 py-2 font-normal" value={service} onChange={(event) => {
+          markMessageOutdated();
+          setPackageSelection(null);
+          setService(event.target.value as ConsultationServiceKey);
+          setProcess("");
+        }}>{dropdownServices.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label>
+        {packageSummary && <section className="grid gap-2 rounded border border-brand-line bg-brand-blue p-4" aria-label="Selected package summary">
+          <strong>{packageSummary.name}</strong>
+          <span>{packageSummary.price === null ? "Quote to confirm" : `₦${packageSummary.price.toLocaleString("en-NG")}`} · {packageSummary.unit}</span>
+          <span className="text-sm text-brand-muted">{packageSummary.context}</span>
+          {packageSummary.discount && <p className="mb-0 text-sm text-brand-muted">Includes {packageSummary.discount}% volume discount for one-time payment.</p>}
+          <Link className="text-sm font-semibold text-brand-purple underline" href="/services#service-pricing">Change package or selection</Link>
+          <small className="text-xs text-brand-muted">Confirm the package and timeline before payment. This enquiry does not book or pay for a service.</small>
+        </section>}
+        {pricingLoadError && <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">Current package pricing could not be loaded from the backend. {pricingLoadError}</p>}
+        {serviceDetails.support.length > 0 && <section className="grid gap-2 rounded border border-brand-line bg-[#f4eef8] p-4" aria-labelledby="support-to-discuss-title">
+          <h3 className="mb-0 text-base font-bold" id="support-to-discuss-title">Support to discuss</h3>
+          <ul className="mb-0 list-disc space-y-1 pl-5 text-sm leading-relaxed">{serviceDetails.support.map((item) => <li key={item}>{item}</li>)}</ul>
+        </section>}
+        <label className="grid gap-1.5 text-sm font-semibold">{serviceDetails.goalLabel}<input className="min-h-10 rounded border border-brand-line px-3 py-2 font-normal" value={goal} onChange={(event) => {
+          markMessageOutdated();
+          setGoal(event.target.value);
+        }} placeholder={serviceDetails.goalPlaceholder} /></label>
+        <label className="grid gap-1.5 text-sm font-semibold">Where are you in the process? (optional)<select className="min-h-10 rounded border border-brand-line bg-white px-3 py-2 font-normal" value={process} onChange={(event) => {
+          markMessageOutdated();
+          setProcess(event.target.value);
+        }}><option value="">Choose if helpful</option>{serviceDetails.stages.map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label className="grid gap-1.5 text-sm font-semibold">{serviceDetails.deadlineLabel}<input className="min-h-10 rounded border border-brand-line px-3 py-2 font-normal" type="date" value={deadline} onChange={(event) => {
+          markMessageOutdated();
+          setDeadline(event.target.value);
+        }} /></label>
+        <label className="grid gap-1.5 text-sm font-semibold">What would you like us to know?<textarea className="rounded border border-brand-line px-3 py-2 font-normal" value={details} onChange={(event) => {
+          markMessageOutdated();
+          setDetails(event.target.value);
+        }} rows={4} placeholder="For example: I have a 500-word draft, but I’m struggling to connect my experience to the selection criteria." /></label>
         <small className="text-xs text-brand-muted">Two or three sentences about the help you want are enough.</small>
-        <button className={buttonVariants({ variant: "brand", size: "default" })}>Create message</button>
+        <button className={buttonVariants({ variant: "brand", size: "default" })}>{prepared ? "Update message" : "Create message"}</button>
         {message && <p className="rounded border border-brand-line bg-brand-blue p-3 text-sm" role="status">{message}</p>}
         {prepared && <div className="grid gap-3 rounded bg-brand-sage p-4">
-          <textarea className="w-full rounded border border-brand-line bg-white p-3 text-sm" value={prepared} onChange={(event) => setPrepared(event.target.value)} rows={9} aria-label="Prepared enquiry message" />
-          <a className={buttonVariants({ variant: "brand", size: "sm" })} href={`mailto:info@careergrill.com?subject=${encodeURIComponent("Careergrill enquiry")}&body=${encodeURIComponent(prepared)}`}>Open in email ↗</a>
-          <a className="text-sm font-semibold text-brand-purple hover:underline" href={`https://wa.me/2348168097950?text=${encodeURIComponent(prepared)}`} target="_blank" rel="noreferrer">Send with WhatsApp ↗</a>
+          <h3 className="mb-0 text-base font-bold">Your message</h3>
+          <label className="grid gap-1.5 text-sm font-semibold">Review or edit before sharing
+            <textarea ref={preparedRef} className="w-full rounded border border-brand-line bg-white p-3 text-sm font-normal" value={prepared} onChange={(event) => {
+              setPrepared(event.target.value);
+              setMessage("Message updated. Copy or open an app to share this version.");
+            }} rows={9} aria-label="Review or edit before sharing" />
+          </label>
+          <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={() => void copyMessage()}>Copy message</button>
+          {copiedNotice && <p className="mb-0 text-sm text-brand-muted" role="status">{copiedNotice}</p>}
+          <p className="mb-0 text-xs text-brand-muted">Copying keeps the message on your clipboard. To make an enquiry, send it through your chosen app.</p>
+          <a className={buttonVariants({ variant: "brand", size: "sm" })} href={`mailto:info@careergrill.com?subject=${encodeURIComponent(`Enquiry: ${serviceDetails.name}`)}&body=${encodeURIComponent(prepared)}`}>Open email draft ↗</a>
+          <a className="text-sm font-semibold text-brand-purple hover:underline" href={`https://wa.me/2348129982113?text=${encodeURIComponent(prepared)}`} target="_blank" rel="noreferrer">Open WhatsApp ↗</a>
         </div>}
-        <p className="mb-0 text-sm text-brand-muted">Your enquiry draft stays in this tab. Copy it before leaving if you want to keep it.</p>
+        {previousMessage && <section className="grid gap-2 rounded border border-brand-line p-3">
+          <h3 className="mb-0 text-base font-bold">Your previous message</h3>
+          <p className="mb-0 text-sm text-brand-muted">Keep any edits you want to reuse in the updated draft.</p>
+          <label className="grid gap-1.5 text-sm font-semibold">Previous message<textarea className="rounded border border-brand-line bg-white p-3 text-sm font-normal" value={previousMessage} onChange={(event) => setPreviousMessage(event.target.value)} rows={6} /></label>
+        </section>}
+        {!prepared && !previousMessage && <p className="mb-0 text-sm text-brand-muted">Your enquiry draft stays in this tab. Copy it before leaving if you want to keep it.</p>}
       </form>
       <aside className="grid content-start gap-3 rounded border border-brand-line bg-brand-blue p-5">
         <Eyebrow>Useful context</Eyebrow>
         <h2 className="mb-0 text-2xl">What to have ready.</h2>
         <ul className="mb-0 list-disc space-y-2 pl-5 text-sm leading-relaxed text-brand-muted">
-          <li>The goal you are working towards</li>
-          <li>What you have already tried or prepared</li>
-          <li>Any opportunity or deadline you have in mind</li>
-          <li>The part of the process you want help with</li>
+          {serviceDetails.checklist.map((item) => <li key={item}>{item}</li>)}
         </ul>
         <p className="mb-0 text-sm leading-relaxed text-brand-muted">You can make an enquiry before everything is ready. Agree the work, fee and delivery date before paid support begins. Share document files privately once you have agreed the process.</p>
         <h3 className="mb-0 mt-2 text-lg font-bold">Prefer to talk?</h3>
         <p className="mb-0 text-sm text-brand-muted">Arrange a free 15-minute consultation to discuss your goal.</p>
-        <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/consultation?mode=call">Arrange a free 15-minute call</Link>
+        <a className={buttonVariants({ variant: "outline", size: "sm" })} href="https://calendar.app.google/p9A1qkxExinCpXE67" target="_blank" rel="noreferrer">Arrange a free 15-minute call</a>
         <small className="text-xs text-brand-muted">Opening a message or booking page does not send an enquiry or book an appointment.</small>
       </aside>
     </div>}
@@ -714,7 +997,7 @@ export function AuditPage() {
 }
 
 export function ContentDetail({ slug, expectedType }: { slug: string; expectedType?: ContentType }) {
-  const [item, setItem] = useState<SiteContent | undefined>(() => sampleContent.find((content) => content.slug === slug && (!expectedType || content.type === expectedType)));
+  const [item, setItem] = useState<SiteContent | undefined>();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   useEffect(() => {
@@ -731,6 +1014,7 @@ export function ContentDetail({ slug, expectedType }: { slug: string; expectedTy
       .finally(() => setLoading(false));
   }, [slug, expectedType]);
   if (!item) return <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid justify-items-start gap-3 py-8">{loading ? <p>Loading content…</p> : <><Eyebrow>Careergrill</Eyebrow><h1 className="mb-0 text-4xl">{loadError ? "Content unavailable." : "Content not found."}</h1><p className="text-brand-muted">{loadError || "This page may have moved or is not published."}</p><Link className={buttonVariants({ variant: "brand", size: "sm" })} href="/">Return home</Link></>}</section>;
+  if (item.type === "resource") return <ResourceToolDetail item={item} />;
   return <article className="mx-auto w-full max-w-7xl px-4 sm:px-8 py-7"><Link className="text-sm font-semibold text-brand-purple hover:underline" href={contentCollectionPath(item.type)}>← Back to {contentCollectionLabel(item.type)}</Link><div className="mx-auto my-7 max-w-3xl"><Eyebrow>{item.category} / Careergrill</Eyebrow><h1 className="my-3 text-4xl leading-tight">{item.title}</h1><p className="text-lg leading-relaxed text-brand-muted">{item.excerpt}</p></div><RichContent value={item.body} className="mx-auto mb-6 max-w-3xl text-base leading-relaxed" />{item.source_url && <a className={buttonVariants({ variant: "brand", size: "sm" })} href={item.source_url} target="_blank" rel="noreferrer">Check official source ↗</a>}</article>;
 }
 
@@ -745,7 +1029,6 @@ function contentCollectionLabel(type: ContentType): string {
     article: "the blog",
     resource: "resources",
     service: "services",
-    faq: "FAQs",
     testimonial: "client feedback",
   };
   return labels[type];

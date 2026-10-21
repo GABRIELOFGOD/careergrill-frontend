@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ApiError, apiRequest } from "@/lib/api";
-import { sampleContent, type SiteContent } from "@/lib/site-data";
+import { type SiteContent } from "@/lib/site-data";
 import { Eyebrow } from "@/components/site-shell";
 import ScholarshipDetailView from "./scholarship-detail-view";
 import { buttonVariants } from "@/components/ui/button";
 
 export default function ScholarshipDetailPage({ slug }: { slug: string }) {
-  const [item, setItem] = useState<SiteContent | null>(() =>
-    sampleContent.find((content) => content.slug === slug && content.type === "scholarship") ?? null);
+  const [item, setItem] = useState<SiteContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");

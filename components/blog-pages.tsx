@@ -1,16 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/api";
 import RichContent from "@/components/rich-content";
 import { Eyebrow } from "@/components/site-shell";
-import { articleSections, blogFallback } from "@/lib/blog-content";
-import { sampleContent, type SiteContent } from "@/lib/site-data";
+import { articleSections } from "@/lib/blog-content";
+import { type SiteContent } from "@/lib/site-data";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const topics = ["All articles", "Graduate admissions", "Scholarships", "Career documents", "Fellowships", "MBA applications"];
 
 function articleText(item: SiteContent): string {
   return [item.title, item.category, item.excerpt, item.body, ...item.tags].join(" ").toLowerCase();
@@ -59,13 +58,13 @@ function BlogArtwork({ item, featured = false }: { item: SiteContent; featured?:
         ))}
         <em className="mt-1.5 block text-xs text-[#806c7a]">Start with what you can explain.</em>
       </div>
-      <b className={cn("absolute -bottom-2.5 right-3 font-display text-4xl opacity-60", featured && "-bottom-5 right-4 text-6xl")}>c<span className="text-brand-orange">.</span></b>
+      <Image src="/logo-icon.png" alt="" width={650} height={673} className={cn("absolute -bottom-1 right-3 size-8 opacity-60", featured && "size-12")} />
     </div>
   );
 }
 
 export function BlogIndexPage() {
-  const [articles, setArticles] = useState(blogFallback);
+  const [articles, setArticles] = useState<SiteContent[]>([]);
   const [query, setQuery] = useState("");
   const [topic, setTopic] = useState("All articles");
   const [loadError, setLoadError] = useState("");
@@ -81,6 +80,7 @@ export function BlogIndexPage() {
       });
   }, []);
 
+  const topics = useMemo(() => ["All articles", ...new Set(articles.map((item) => item.category.trim()).filter(Boolean))], [articles]);
   const visibleArticles = useMemo(() => articles.filter((item) => {
     const matchesTopic = topic === "All articles" || item.category.toLowerCase() === topic.toLowerCase();
     return matchesTopic && (!query.trim() || articleText(item).includes(query.trim().toLowerCase()));
@@ -97,7 +97,7 @@ export function BlogIndexPage() {
             <Eyebrow>The Careergrill blog</Eyebrow>
             <h1 className="mb-3 text-5xl tracking-tight sm:text-6xl">Guides to jobs,<br />scholarships<br /><em>and application writing.</em></h1>
             <p className="mb-0 max-w-xl text-base leading-relaxed text-brand-muted">Read about the decisions and documents behind a stronger application, from choosing funding to explaining your work.</p>
-            {loadError && <small className="mt-3 block text-xs text-brand-muted" role="status">Showing saved article previews. {loadError}</small>}
+            {loadError && <small className="mt-3 block text-xs text-red-800" role="alert">Articles could not be loaded: {loadError}</small>}
           </div>
           <aside className="border-t border-brand-purple/30 pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0 flex flex-col gap-3">
             <h2 className="mb-2 text-3xl">Put the advice to work.</h2>
@@ -173,29 +173,31 @@ function BlogCard({ item }: { item: SiteContent }) {
 }
 
 export function BlogArticlePage({ slug }: { slug: string }) {
-  const [article, setArticle] = useState<SiteContent | null>(
-    () => blogFallback.find((item) => item.slug === slug) ?? null,
-  );
+  const [article, setArticle] = useState<SiteContent | null>(null);
+  const [relatedResources, setRelatedResources] = useState<SiteContent[]>([]);
+  const [relatedError, setRelatedError] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const sections = article ? articleSections(article.body) : [];
-  const relatedSlug = article && typeof article.data.related_resource_slug === "string" && article.data.related_resource_slug.trim()
-    ? article.data.related_resource_slug
-    : "match-experience-fellowship-criteria";
-  const related = sampleContent.find((item) => item.type === "resource" && item.slug === relatedSlug)
-    ?? sampleContent.find((item) => item.slug === "match-experience-fellowship-criteria");
+  const configuredRelatedSlug = article && typeof article.data.related_resource_slug === "string" ? article.data.related_resource_slug : "";
+  const related = relatedResources.find((item) => item.slug === configuredRelatedSlug) ?? relatedResources[0];
+  const relatedSlug = related?.slug ?? "";
   const relatedTitle = article
-    ? textValue(article.data.related_resource_title, related?.title ?? "Match your experience to a fellowship’s criteria")
-    : related?.title ?? "Match your experience to a fellowship’s criteria";
-  const relatedFormat = String(related?.data.format ?? "Worksheet").toLowerCase();
+    ? textValue(article.data.related_resource_title, related?.title ?? "")
+    : related?.title ?? "";
+  const relatedFormat = String(related?.data.format ?? "").toLowerCase();
 
   useEffect(() => {
-    setArticle(blogFallback.find((item) => item.slug === slug) ?? null);
+    let active = true;
+    setArticle(null);
     setLoading(true);
     setLoadError("");
-    apiRequest<{ item: SiteContent }>(`/content/${encodeURIComponent(slug)}`)
+    setRelatedResources([]);
+    setRelatedError("");
+    void apiRequest<{ item: SiteContent }>(`/content/${encodeURIComponent(slug)}`)
       .then(({ item }) => {
+        if (!active) return;
         if (item.type !== "article") {
           setArticle(null);
           setLoadError("This page is not a blog article.");
@@ -204,13 +206,12 @@ export function BlogArticlePage({ slug }: { slug: string }) {
         setArticle(item);
         setLoadError("");
       })
-      .catch((error: unknown) => {
-        setLoadError(error instanceof Error ? error.message : "The article could not be loaded.");
-        if (!blogFallback.some((item) => item.slug === slug)) {
-          setArticle(null);
-        }
-      })
-      .finally(() => setLoading(false));
+      .catch((error: unknown) => { if (active) setLoadError(error instanceof Error ? error.message : "The article could not be loaded."); })
+      .finally(() => { if (active) setLoading(false); });
+    void apiRequest<{ items: SiteContent[] }>("/content?type=resource")
+      .then(({ items }) => { if (active) setRelatedResources(items); })
+      .catch((error: unknown) => { if (active) setRelatedError(error instanceof Error ? error.message : "Related resources could not be loaded."); });
+    return () => { active = false; };
   }, [slug]);
 
   async function copyArticleLink() {
@@ -243,7 +244,7 @@ export function BlogArticlePage({ slug }: { slug: string }) {
         <h1 className="mx-auto mb-3 text-5xl leading-tight sm:text-6xl">{article.title}</h1>
         <p className="mx-auto mb-4 max-w-3xl text-base text-brand-muted">{article.excerpt}</p>
         <div className="inline-flex items-center gap-2 text-left">
-          <span className="grid size-7 place-items-center rounded-full bg-brand-ink text-sm font-bold text-white">c<span className="text-brand-orange">.</span></span>
+          <span className="grid size-7 place-items-center rounded-full bg-brand-ink p-1"><Image src="/logo-icon.png" alt="" width={650} height={673} className="size-full object-contain" /></span>
           <div className="grid gap-0.5"><strong className="text-sm">{textValue(article.data.author, "Careergrill")}</strong><small className="text-xs text-brand-muted">{articleReadTime(article)} · Application notes</small></div>
         </div>
       </header>
@@ -256,12 +257,13 @@ export function BlogArticlePage({ slug }: { slug: string }) {
           <div className="my-4 flex flex-wrap items-center gap-3 border-t border-brand-line pt-4 text-sm">
             <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={() => void copyArticleLink()}>Copy article link</button>
             {message && <span role="status">{message}</span>}
-            {loadError && <span role="status">Showing the saved preview because the article service is unavailable.</span>}
+            {loadError && <span role="alert">Article unavailable: {loadError}</span>}
           </div>
-          <aside className="my-4 grid gap-2 rounded border border-brand-line bg-brand-blue p-4">
-            <Eyebrow>Put the advice to work</Eyebrow><h2 className="mb-0 text-xl font-bold">{relatedTitle}</h2><p className="mb-1 text-sm text-brand-muted">{related?.excerpt ?? "Build examples around the criteria before you start writing the application."}</p>
-            <Link className={buttonVariants({ variant: "brand", size: "sm", className: "self-start" })} href={`/resources/${encodeURIComponent(relatedSlug)}`}>Open the {relatedFormat}</Link>
-          </aside>
+          {related && <aside className="my-4 grid gap-2 rounded border border-brand-line bg-brand-blue p-4">
+            <Eyebrow>Put the advice to work</Eyebrow><h2 className="mb-0 text-xl font-bold">{relatedTitle}</h2>{related.excerpt && <p className="mb-1 text-sm text-brand-muted">{related.excerpt}</p>}
+            <Link className={buttonVariants({ variant: "brand", size: "sm", className: "self-start" })} href={`/resources/${encodeURIComponent(relatedSlug)}`}>Open the {relatedFormat || "resource"}</Link>
+          </aside>}
+          {relatedError && <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">Related resources could not be loaded: {relatedError}</p>}
           <Link className="text-sm font-semibold text-brand-purple underline underline-offset-4" href="/blog">Back to all articles</Link>
         </div>
 
@@ -270,9 +272,9 @@ export function BlogArticlePage({ slug }: { slug: string }) {
             <strong className="text-sm">In this article</strong>
             <ol className="mb-0 mt-2 list-decimal space-y-1.5 pl-4 text-xs leading-relaxed text-brand-purple">{sections.map(({ id, title }) => <li key={id}><a className="hover:underline" href={`#${id}`}>{title}</a></li>)}</ol>
           </nav>}
-          <Link className="grid gap-2 rounded border border-brand-line bg-white p-3" href={`/resources/${encodeURIComponent(relatedSlug)}`}>
+          {related && <Link className="grid gap-2 rounded border border-brand-line bg-white p-3" href={`/resources/${encodeURIComponent(relatedSlug)}`}>
             <Eyebrow className="mb-0 text-brand-eyebrow">Useful alongside this article</Eyebrow><strong className="text-sm leading-snug">{relatedTitle}</strong><span className="text-xs font-bold underline">Open the tool</span>
-          </Link>
+          </Link>}
           <div className="rounded bg-orange-50 p-3">
             <h2 className="mb-2 text-sm font-bold">Want feedback on your preparation?</h2>
             <p className="mb-3 text-xs leading-relaxed text-brand-muted">Bring your draft, the official instructions and your deadline to the conversation.</p>
