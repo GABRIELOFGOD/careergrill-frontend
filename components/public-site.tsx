@@ -349,10 +349,11 @@ export function FaqPage() {
     return Array.from(grouped, ([title, questions]) => ({ title, questions }));
   }, [faqs]);
   return <section className="min-h-screen bg-brand-cream px-4 py-8 sm:px-8">
-    <div className="mx-auto w-full max-w-xl">
+    <Container>
+    <div className="mx-auto w-full md:px-40">
       <header className="border-b border-brand-line pb-6">
         <Eyebrow>Help &amp; FAQs</Eyebrow>
-        <h1 className="mb-3 mt-2 text-4xl tracking-tight">Help with audits, opportunities and services.</h1>
+        <h1 className="mb-3 mt-2 text-6xl tracking-tight leading-16 font-extrabold">Help with audits, opportunities and services.</h1>
         <p className="mb-0 text-sm leading-relaxed text-brand-muted">Find the support you need, understand what you’re booking and keep track of your saved work.</p>
       </header>
       {faqError && <p className="mt-5 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{faqError}</p>}
@@ -374,6 +375,7 @@ export function FaqPage() {
         </ul>
       </section>
     </div>
+    </Container>
   </section>;
 }
 
