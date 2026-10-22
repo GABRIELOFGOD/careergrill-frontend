@@ -91,8 +91,8 @@ export function BlogIndexPage() {
 
   return (
     <div className="flex flex-col gap-10">
-      <section className="bg-brand-sage">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-64 grid-cols-1 items-center gap-6 py-9 md:grid-cols-[minmax(0,1.2fr)_minmax(16rem,.8fr)]">
+      <section className="blog-index-hero bg-brand-sage">
+        <div className="blog-index-hero-inner mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-64 grid-cols-1 items-center gap-6 py-9 md:grid-cols-[minmax(0,1.2fr)_minmax(16rem,.8fr)]">
           <div>
             <Eyebrow>The Careergrill blog</Eyebrow>
             <h1 className="mb-3 text-5xl tracking-tight sm:text-6xl">Guides to jobs,<br />scholarships<br /><em>and application writing.</em></h1>
@@ -235,40 +235,46 @@ export function BlogArticlePage({ slug }: { slug: string }) {
   }
 
   return (
-    <article className="mx-auto w-full max-w-7xl px-4 sm:px-8 py-6 pb-12">
+    <article className="blog-article-reader mx-auto w-full max-w-7xl px-4 sm:px-8 py-6 pb-12">
       <nav className="mb-6 flex items-center gap-3 text-sm text-brand-purple" aria-label="Breadcrumb">
         <Link href="/resources">Resources</Link><span>/</span><Link href="/blog">Blog</Link>
       </nav>
       <header className="mx-auto mb-5 max-w-4xl text-center">
         <Eyebrow className="text-brand-eyebrow">{article.category}</Eyebrow>
-        <h1 className="mx-auto mb-3 text-5xl leading-tight sm:text-6xl">{article.title}</h1>
+        <h1 className="mx-auto mb-3">{article.title}</h1>
         <p className="mx-auto mb-4 max-w-3xl text-base text-brand-muted">{article.excerpt}</p>
+        {/* {sections.length > 0 && <nav className="mb-5 flex flex-wrap items-center justify-center gap-2" aria-label="Jump to section">
+          <span className="mr-1 text-sm font-semibold text-brand-ink">Jump to:</span>
+          {sections.map(({ id, title }) => <a className="rounded border border-[#d5c4dc] bg-[#f2ecf7] px-3 py-2 text-sm font-semibold text-brand-ink hover:bg-[#e9def0]" href={`#${id}`} key={id}>{title}</a>)}
+        </nav>} */}
         <div className="inline-flex items-center gap-2 text-left">
           <span className="grid size-7 place-items-center rounded-full bg-brand-ink p-1"><Image src="/logo-icon.png" alt="" width={650} height={673} className="size-full object-contain" /></span>
           <div className="grid gap-0.5"><strong className="text-sm">{textValue(article.data.author, "Careergrill")}</strong><small className="text-xs text-brand-muted">{articleReadTime(article)} · Application notes</small></div>
         </div>
       </header>
 
-      <div className="mx-auto mb-7 h-[16.875rem] max-w-4xl overflow-hidden rounded-md"><BlogArtwork item={article} featured /></div>
+      <div className="mx-auto mb-7 h-67.5 max-w-4xl overflow-hidden rounded-md"><BlogArtwork item={article} featured /></div>
 
-      <div className="mx-auto grid max-w-6xl items-start gap-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
-        <div className="min-w-0">
-          <RichContent value={article.body} className="text-base leading-[1.8] text-brand-muted [&_h2]:scroll-mt-28 [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:border-b [&_h2]:border-brand-line [&_h2]:pb-2 [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-bold [&_p]:mb-3.5" headingIds={sections.map(({ id }) => id)} />
+      <div className="mx-auto grid max-w-7xl items-start gap-8 md:grid-cols-3 grid-cols-1">
+        <div className="col-span-2 min-w-0">
+          <RichContent value={article.body} className="blog-article-content text-base leading-[1.8] text-brand-muted [&_h2]:scroll-mt-28 [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:border-b [&_h2]:border-brand-line [&_h2]:pb-2 [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-bold [&_p]:mb-3.5" headingIds={sections.map(({ id }) => id)} />
           <div className="my-4 flex flex-wrap items-center gap-3 border-t border-brand-line pt-4 text-sm">
-            <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={() => void copyArticleLink()}>Copy article link</button>
+            <Button variant={"outline"} type="button" onClick={() => void copyArticleLink()}>Copy article link</Button>
             {message && <span role="status">{message}</span>}
             {loadError && <span role="alert">Article unavailable: {loadError}</span>}
           </div>
           {related && <aside className="my-4 grid gap-2 rounded border border-brand-line bg-brand-blue p-4">
-            <Eyebrow>Put the advice to work</Eyebrow><h2 className="mb-0 text-xl font-bold">{relatedTitle}</h2>{related.excerpt && <p className="mb-1 text-sm text-brand-muted">{related.excerpt}</p>}
-            <Link className={buttonVariants({ variant: "brand", size: "sm", className: "self-start" })} href={`/resources/${encodeURIComponent(relatedSlug)}`}>Open the {relatedFormat || "resource"}</Link>
+            <Eyebrow className="text-xs">Put the advice to work</Eyebrow><h2 className="mb-0 text-xl font-bold">{relatedTitle}</h2>{related.excerpt && <p className="mb-1 text-sm text-brand-muted">{related.excerpt}</p>}
+            <Link href={`/resources/${encodeURIComponent(relatedSlug)}`}>
+              <Button variant="brand">Open the {relatedFormat || "resource"}</Button>
+            </Link>
           </aside>}
           {relatedError && <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">Related resources could not be loaded: {relatedError}</p>}
           <Link className="text-sm font-semibold text-brand-purple underline underline-offset-4" href="/blog">Back to all articles</Link>
         </div>
 
-        <aside className="grid gap-3">
-          {sections.length > 0 && <nav className="rounded border border-brand-line bg-white p-3" aria-label="In this article">
+        <aside className="grid w-fit gap-3 top-10 sticky print:hidden">
+          {sections.length > 0 && <nav className="rounded border border-brand-line bg-[#f0eaf4] p-3" aria-label="In this article">
             <strong className="text-sm">In this article</strong>
             <ol className="mb-0 mt-2 list-decimal space-y-1.5 pl-4 text-xs leading-relaxed text-brand-purple">{sections.map(({ id, title }) => <li key={id}><a className="hover:underline" href={`#${id}`}>{title}</a></li>)}</ol>
           </nav>}
@@ -278,7 +284,11 @@ export function BlogArticlePage({ slug }: { slug: string }) {
           <div className="rounded bg-orange-50 p-3">
             <h2 className="mb-2 text-sm font-bold">Want feedback on your preparation?</h2>
             <p className="mb-3 text-xs leading-relaxed text-brand-muted">Bring your draft, the official instructions and your deadline to the conversation.</p>
-            <Link className={buttonVariants({ variant: "outline", size: "xs", className: "w-full whitespace-normal text-center" })} href="/consultation">Discuss a statement review</Link>
+            <Link href="/consultation">
+            <Button variant="outline" className="w-full">
+              Discuss a statement review
+            </Button>
+          </Link>
           </div>
         </aside>
       </div>

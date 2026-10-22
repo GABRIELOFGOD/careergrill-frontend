@@ -117,8 +117,8 @@ export function JobListingPage() {
 
   return (
     <>
-      <section className="bg-brand-sage">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-64 grid-cols-1 items-center gap-7 py-10 md:grid-cols-[minmax(0,1fr)_minmax(15rem,.7fr)] lg:gap-12">
+      <section className="jobs-page-hero bg-brand-sage">
+        <div className="jobs-page-hero-inner mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-64 grid-cols-1 items-center gap-7 py-10 md:grid-cols-[minmax(0,1fr)_minmax(15rem,.7fr)] lg:gap-12">
           <div>
             <Eyebrow>Careergrill / Find jobs</Eyebrow>
             <h1 className="mb-3 text-5xl tracking-tight sm:text-6xl">Find jobs<br /><em>and internships.</em></h1>

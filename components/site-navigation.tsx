@@ -44,9 +44,10 @@ export default function SiteNavigation() {
   }
 
   return (
-    <div className="relative ml-auto lg:static lg:ml-0" ref={containerRef}>
+    // <div className="site-nav-root relative ml-auto lg:static lg:ml-0" ref={containerRef}>
+    <div className="site-nav-root relative my-auto" ref={containerRef}>
       <button
-        className="grid size-10 place-items-center rounded-md border border-brand-line bg-white text-brand-ink lg:hidden"
+        className="site-nav-toggle grid size-10 place-items-center rounded-md border border-brand-line bg-white text-brand-ink lg:hidden"
         type="button"
         aria-label={isOpen ? "Close navigation" : "Open navigation"}
         aria-expanded={isOpen}
@@ -58,7 +59,8 @@ export default function SiteNavigation() {
       <nav
         ref={navigationRef}
         id="primary-navigation"
-        className={`absolute right-0 top-full z-30 flex w-[min(20rem,calc(100vw-2.25rem))] flex-col items-stretch gap-0 rounded-lg border border-brand-line bg-white p-2 shadow-xl lg:static lg:z-auto lg:w-auto lg:flex-row lg:items-center lg:gap-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none ${isOpen ? "max-lg:flex" : "max-lg:hidden"}`}
+        data-open={isOpen}
+        className={`absolute right-0 top-full z-30 flex text-sm tracking-tight font-medium w-[min(20rem,calc(100vw-2.25rem))] flex-col items-stretch gap-0 rounded-lg border border-brand-line bg-white p-2 shadow-xl lg:static lg:z-auto lg:w-auto lg:flex-row lg:items-center lg:gap-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none ${isOpen ? "max-lg:flex" : "max-lg:hidden"}`}
         aria-label="Main navigation"
       >
         <details className="group relative max-lg:static">

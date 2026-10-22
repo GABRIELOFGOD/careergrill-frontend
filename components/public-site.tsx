@@ -7,33 +7,27 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { apiRequest, apiUrl } from "@/lib/api";
 import { contentHref, type ContentType, type SiteContent } from "@/lib/site-data";
 import { buildConsultationMessage, consultationDropdownServices, createPricingSummary, initialDropdownService, parsePricingSelection, type ConsultationServiceKey, type ConsultationServices } from "@/lib/consultation";
+import { homeMarketingCopy } from "@/lib/static-public-copy";
 import type { HomeMarketingCopy } from "@/lib/public-copy";
 import type { ServicePricingConfig } from "@/lib/service-pricing";
 import { Eyebrow } from "@/components/site-shell";
 import RichContent from "@/components/rich-content";
 import ResourceToolDetail from "@/components/resource-tool-detail";
-import { usePublicCopy } from "./use-public-copy";
 import { cn } from "@/lib/utils";
 import PageHeader from "./ui/page-header";
 import Container from "./container";
 
 export function HomePage() {
-  const { copy, error: copyError, loading: copyLoading } = usePublicCopy();
   const { items: resources } = usePublicContent("resource");
   const { items: articles } = usePublicContent("article");
   const { items: testimonials, error: testimonialError } = usePublicContent("testimonial");
   const featuredArticle = articles.find((item) => item.data.featured === true) ?? articles[0];
   const featuredTestimonial = testimonials[0];
-  if (!copy) {
-    return <p className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-8" role={copyLoading ? "status" : "alert"}>
-      {copyLoading ? "Loading site content…" : `Site content could not be loaded: ${copyError}`}
-    </p>;
-  }
-  const home = copy.home;
+  const home = homeMarketingCopy;
   return (
     <>
-      <section className="mx-auto grid min-h-155 w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 py-12 sm:px-8 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:px-10 lg:py-16">
-        <div>
+      <section className="home-hero mx-auto grid min-h-155 w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 py-12 sm:px-8 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:px-10 lg:py-16">
+        <div className="flex flex-col gap-5">
           <Eyebrow>{home.hero.eyebrow}</Eyebrow>
           <h1 className="mb-4 max-w-2xl text-5xl tracking-tight sm:text-[4rem] sm:leading-[1.13]">{home.hero.title}<br />{home.hero.titleLead} <span className="text-brand-orange-dark">{home.hero.titleAccent}</span></h1>
           <p className="mb-7 max-w-xl text-xl leading-relaxed text-brand-muted">{home.hero.description}</p>
@@ -57,24 +51,24 @@ export function HomePage() {
       </section>
       <section className="bg-white py-16">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-8">
-          <div className="mb-7 flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-start"><div><Eyebrow>{home.features.eyebrow}</Eyebrow><h2 className="mb-0 text-4xl">{home.features.title}</h2></div><Link className="inline-flex items-center gap-2 font-semibold text-brand-orange-dark hover:underline" href="/services">See all services</Link></div>
-          <div className="grid gap-px overflow-hidden rounded border border-brand-line bg-brand-line sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mb-7 flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-start"><div><Eyebrow>{home.features.eyebrow}</Eyebrow><h2 className="mb-0 text-4xl">{home.features.title}</h2></div><Link className="inline-flex items-center gap-2 font-semibold hover:text-brand-orange-dark text-brand-ink underline" href="/services">See all services</Link></div>
+          <div className="grid gap-px overflow-hidden rounded border border-brand-line divide-x divide-brand-line sm:grid-cols-2 lg:grid-cols-3">
             {home.features.cards.map((card) => <FeatureCard key={card.number} {...card} />)}
           </div>
         </div>
       </section>
-      <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid gap-8 py-16 md:grid-cols-2">
-        <div><Eyebrow>{home.feedbackExample.eyebrow}</Eyebrow><h2 className="text-4xl">{home.feedbackExample.title}</h2><p className="text-base text-brand-muted">{home.feedbackExample.description}</p><p className="text-sm text-brand-muted">{home.feedbackExample.disclaimer}</p></div>
-        <div className="rounded-md border border-brand-line bg-brand-footer p-6"><span className="mb-3 block text-xs font-bold uppercase tracking-widest text-brand-muted">{home.feedbackExample.quoteLabel}</span><blockquote className="border-l-4 border-brand-orange pl-4 text-xl leading-relaxed">“{home.feedbackExample.quote}”</blockquote><div className="bg-[#fff5ef] p-4"><strong>{home.feedbackExample.insightTitle}</strong><p className="mb-0 mt-2 text-sm leading-relaxed text-brand-muted">{home.feedbackExample.insightDescription}</p></div><Link href="/services" className="mt-3 inline-flex font-semibold text-brand-orange-dark underline underline-offset-4 hover:no-underline">{home.feedbackExample.link}</Link></div>
+      <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid gap-12 py-16 md:grid-cols-2">
+        <div className="flex flex-col gap-5"><Eyebrow>{home.feedbackExample.eyebrow}</Eyebrow><h2 className="text-5xl">{home.feedbackExample.title}</h2><p className="text-xl text-brand-muted">{home.feedbackExample.description}</p></div>
+        <div className="rounded-md border border-brand-line bg-brand-footer p-6"><span className="mb-3 block text-xs font-bold uppercase tracking-widest text-brand-muted">{home.feedbackExample.quoteLabel}</span><blockquote className="border-l-4 border-brand-orange pl-4 text-xl leading-relaxed">“{home.feedbackExample.quote}”</blockquote><div className="bg-[#fff5ef] p-4"><strong>{home.feedbackExample.insightTitle}</strong><p className="mb-0 mt-2 text-sm leading-relaxed text-brand-muted">{home.feedbackExample.insightDescription}</p></div><Link href="/services" className="mt-3 inline-flex font-semibold text-brand-ink hover:text-brand-orange-dark underline underline-offset-4">{home.feedbackExample.link}</Link></div>
       </section>
-      <section className="bg-brand-blue py-16"><div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid items-center gap-7 md:grid-cols-2"><div><Eyebrow>{home.testimonial.eyebrow}</Eyebrow><h2 className="text-4xl">{home.testimonial.title}</h2><Link href="/client-feedback" className="font-semibold text-brand-orange-dark underline underline-offset-4 hover:no-underline">{home.testimonial.link}</Link></div>{featuredTestimonial ? <article className="rounded-md border border-brand-line bg-brand-footer p-6"><span className="text-xs font-bold uppercase tracking-widest text-brand-muted">{featuredTestimonial.category || "Client feedback"}</span><h3 className="my-3 font-display text-xl font-bold">{featuredTestimonial.title}</h3><RichContent value={featuredTestimonial.body} className="mb-3 text-sm leading-relaxed text-brand-muted" /><small>{String(featuredTestimonial.data.author ?? featuredTestimonial.title)}</small></article> : testimonialError ? <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{testimonialError}</p> : <p className="mb-0 text-sm text-brand-muted">{home.testimonial.empty}</p>}</div></section>
+      <section className="bg-brand-blue py-16"><div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid items-center gap-7 md:grid-cols-2"><div className="flex flex-col gap-5"><Eyebrow>{home.testimonial.eyebrow}</Eyebrow><h2 className="text-5xl">{home.testimonial.title}</h2><Link href="/client-feedback" className="font-semibold hover:text-brand-orange-dark text-brand-ink underline underline-offset-4 hover:no-underline">{home.testimonial.link}</Link></div>{featuredTestimonial ? <article className="rounded-md border border-brand-line bg-brand-footer p-6"><span className="text-xs font-bold uppercase tracking-widest text-brand-muted">{featuredTestimonial.category || "Client feedback"}</span><h3 className="my-3 font-display text-xl font-bold">{featuredTestimonial.title}</h3><RichContent value={featuredTestimonial.body} className="mb-3 text-sm leading-relaxed text-brand-muted" /><small>{String(featuredTestimonial.data.author ?? featuredTestimonial.title)}</small></article> : testimonialError ? <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{testimonialError}</p> : <p className="mb-0 text-sm text-brand-muted">{home.testimonial.empty}</p>}</div></section>
       <section className="py-16">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-8">
-          <div className="mb-7 flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-start"><div><Eyebrow>{home.resources.eyebrow}</Eyebrow><h2 className="mb-0 text-4xl">{home.resources.title}</h2></div><div className="flex flex-wrap gap-4"><Link className="font-semibold text-brand-orange-dark hover:underline" href="/resources">{home.resources.resourcesLink}</Link><Link className="font-semibold text-brand-orange-dark hover:underline" href="/blog">{home.resources.blogLink}</Link></div></div>
-          <div className="grid gap-4 md:grid-cols-3">{resources.slice(0, 3).map((item) => <article className="flex min-h-52 flex-col rounded-md border border-brand-line bg-brand-footer p-5" key={item.id}><span className="text-xs font-bold uppercase tracking-widest text-brand-muted">{item.category} / {String(item.data.format ?? "Checklist")}</span><h3 className="mb-2 mt-3 font-display text-lg font-bold"><Link href={`/resources/${item.slug}`}>{item.title}</Link></h3><p className="text-sm text-brand-muted">{item.excerpt}</p><Link className="mt-auto font-semibold text-brand-orange-dark underline underline-offset-4 hover:no-underline" href={`/resources/${item.slug}`}>Open {String(item.data.format ?? "checklist").toLowerCase()}</Link></article>)}</div>
+          <div className="mb-7 flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-start"><div><Eyebrow>{home.resources.eyebrow}</Eyebrow><h2 className="mb-0 text-5xl">{home.resources.title}</h2></div><div className="flex flex-wrap gap-4"><Link className="font-semibold text-brand-ink hover:text-brand-orange-dark underline" href="/resources">{home.resources.resourcesLink}</Link><Link className="font-semibold text-brand-ink hover:text-brand-orange-dark underline" href="/blog">{home.resources.blogLink}</Link></div></div>
+          <div className="grid gap-4 md:grid-cols-3">{resources.slice(0, 3).map((item) => <article className="flex min-h-52 flex-col gap-5 rounded-md border border-brand-line bg-brand-footer p-5" key={item.id}><span className="text-xs font-bold uppercase tracking-widest text-brand-muted">{item.category} / {String(item.data.format ?? "Checklist")}</span><h3 className="mb-2 mt-3 font-display text-2xl font-bold"><Link href={`/resources/${item.slug}`}>{item.title}</Link></h3><p className="text-sm text-brand-muted">{item.excerpt}</p><Link className="mt-auto font-semibold text-brand-ink hover:text-brand-orange-dark underline underline-offset-4 hover:no-underline" href={`/resources/${item.slug}`}>Open {String(item.data.format ?? "checklist").toLowerCase()}</Link></article>)}</div>
         </div>
       </section>
-      {featuredArticle && <section className="bg-brand-cream py-10"><div className="mx-auto w-full max-w-7xl px-4 sm:px-8 flex items-center justify-between gap-6 max-md:flex-col max-md:items-start"><div className="flex flex-col gap-5"><Eyebrow>{home.article.eyebrow}</Eyebrow><h2 className="mb-2 max-w-2xl text-3xl">{featuredArticle.title}</h2><p className="max-w-3xl text-sm text-brand-muted">{featuredArticle.excerpt}</p><Link href={`/blog/${featuredArticle.slug}`}>
+      {featuredArticle && <section className="bg-brand-cream py-10"><div className="mx-auto w-full max-w-7xl px-4 sm:px-8 flex items-center justify-between gap-6 max-md:flex-col max-md:items-start"><div className="flex flex-col gap-5"><Eyebrow>{home.article.eyebrow}</Eyebrow><h2 className="mb-2 max-w-2xl text-3xl">{featuredArticle.title}</h2><p className="max-w-3xl text-lg text-brand-muted">{featuredArticle.excerpt}</p><Link href={`/blog/${featuredArticle.slug}`}>
         <Button variant={"outline"}>{home.article.readLink}</Button>
       </Link></div><Link className="font-semibold text-brand-ink underline underline-offset-4 hover:no-underline" href="/blog">{home.article.browseLink} ↗</Link></div></section>}
       <Callout copy={home.callout} />
@@ -87,7 +81,7 @@ function FeatureCard({ number, title, body, href, link }: { number: string; titl
 }
 
 function Callout({ copy }: { copy: HomeMarketingCopy["callout"] }) {
-  return <section className="bg-brand-cream py-20 text-center"><div className="mx-auto flex w-full max-w-7xl flex-col items-center px-4 sm:px-8"><Eyebrow>{copy.eyebrow}</Eyebrow><h2 className="mb-3 max-w-lg text-4xl">{copy.title}</h2><p className="mb-6 max-w-2xl text-base text-brand-muted">{copy.description}</p><div className="flex flex-wrap justify-center gap-3"><Link className={buttonVariants({ variant: "brand" })} href="/career-audit">{copy.auditLink}</Link><Link href="/consultation?mode=call">
+  return <section className="bg-brand-cream py-20 text-center"><div className="mx-auto flex w-full max-w-7xl flex-col items-center px-4 sm:px-8"><Eyebrow>{copy.eyebrow}</Eyebrow><h2 className="mb-3 max-w-sm text-5xl">{copy.title}</h2><p className="mb-6 max-w-2xl text-base text-brand-muted">{copy.description}</p><div className="flex flex-wrap justify-center gap-3"><Link className={buttonVariants({ variant: "brand" })} href="/career-audit">{copy.auditLink}</Link><Link href="/consultation?mode=call">
     <Button variant={"outline"}>{copy.consultationLink}</Button></Link></div></div></section>;
 }
 
@@ -137,8 +131,8 @@ export function ResourcePage() {
   }), [resources, topic, query, format]);
 
   return <>
-    <section className="bg-brand-sage">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-56 grid-cols-1 items-center gap-8 py-9 md:grid-cols-[minmax(0,1.15fr)_minmax(16rem,.85fr)]">
+    <section className="resource-page-hero bg-brand-sage">
+      <div className="resource-page-hero-inner mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-56 grid-cols-1 items-center gap-8 py-9 md:grid-cols-[minmax(0,1.15fr)_minmax(16rem,.85fr)]">
         <div>
           <Eyebrow>The Careergrill resource library</Eyebrow>
           <h1 className="mb-3 max-w-3xl text-5xl tracking-tight sm:text-6xl">Practical help for<br /><em>your next application.</em></h1>
@@ -258,7 +252,7 @@ export function FeedbackPage() {
   return <>
     <PageHeader
       header="client feedback"
-      title="A client’s experience with Careergrill."
+      title={<>A client’s experience<br /> with Careergrill.</>}
       description="Read approved client stories, or share your own experience for review."
     />
     <Container className="space-y-7 py-10 flex flex-col gap-10">
@@ -348,40 +342,52 @@ export function FaqPage() {
     });
     return Array.from(grouped, ([title, questions]) => ({ title, questions }));
   }, [faqs]);
-  return <section className="min-h-screen bg-brand-cream px-4 py-8 sm:px-8">
-    <Container>
-    <div className="mx-auto w-full md:px-40">
-      <header className="border-b border-brand-line pb-6">
+  return <section className="faq-page min-h-screen bg-brand-cream px-4 py-8 sm:px-8">
+    <Container className="faq-page-shell">
+    <div className="faq-page-content">
+      <header className="faq-page-heading">
         <Eyebrow>Help &amp; FAQs</Eyebrow>
-        <h1 className="mb-3 mt-2 text-6xl tracking-tight leading-16 font-extrabold">Help with audits, opportunities and services.</h1>
-        <p className="mb-0 text-sm leading-relaxed text-brand-muted">Find the support you need, understand what you’re booking and keep track of your saved work.</p>
+        <h1>Answers before<br />you take your next step.</h1>
+        <p>Find the support you need, understand what you’re booking and keep track of your saved work.</p>
+        {groups.length > 0 && <nav className="faq-topics" aria-label="Jump to FAQ topic">
+          <span className="faq-topics-label">Jump to:</span>
+          {groups.map((group) => {
+            const id = `faq-${group.title.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+            return <a href={`#${id}`} key={group.title}>{group.title}</a>;
+          })}
+        </nav>}
       </header>
       {faqError && <p className="mt-5 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{faqError}</p>}
       {faqLoading && <p className="mt-5 text-sm text-brand-muted" role="status">Loading FAQs…</p>}
       {!faqLoading && !faqError && !groups.length && <p className="mt-5 rounded border border-brand-line bg-white p-4 text-sm text-brand-muted">There are no FAQs to display yet.</p>}
-      {groups.map((group) => <section className="border-b border-brand-line py-5" key={group.title}>
+      {groups.map((group) => {
+        const id = `faq-${group.title.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+        return <section className="border-b border-brand-line py-5" id={id} key={group.title}>
         <h2 className="mb-2 text-lg font-bold">{group.title}</h2>
         {group.questions.map((faq) => <details className="border-t border-brand-line py-3" key={faq.id}>
           <summary className="cursor-pointer text-sm font-semibold marker:text-brand-purple">{faq.title}</summary>
           <RichContent value={faq.body} className="mt-3 text-sm leading-relaxed text-brand-muted [&_p]:mb-3 [&_p:last-child]:mb-0 [&_a]:text-brand-purple" />
         </details>)}
-      </section>)}
-      <section className="py-5">
-        <h2 className="mb-1 text-lg font-bold">Still have a question?</h2>
-        <p className="mb-3 text-sm leading-relaxed text-brand-muted">Tell us what you’re working on and the help you need.</p>
-        <ul className="mb-0 list-disc space-y-1 pl-5 text-sm">
-          <li><Link className="font-semibold text-brand-purple underline" href="/consultation">Draft a service enquiry</Link></li>
-          <li><Link className="font-semibold text-brand-purple underline" href="/consultation?mode=call">Book a free 15-minute call</Link></li>
-        </ul>
-      </section>
+      </section>;
+      })}
+      <div className="bg-brand-sage p-10 rounded-lg mt-10 flex flex-col gap-5">
+        <h2 className="text-3xl font-bold">Still have a question?</h2>
+        <p>Tell us what you’re working on and the help you need.</p>
+        <div className="flex gap-5">
+          <Link className={buttonVariants({ variant: "brand" })} href="/consultation">Draft a service enquiry</Link>
+          <Link href="/consultation?mode=call">
+            <Button variant={"outline"}>Book a free 15-minute call</Button>
+          </Link>
+        </div>
+      </div>
     </div>
     </Container>
   </section>;
 }
 
 export function PrivacyPage() {
-  return <section className="min-h-screen bg-brand-cream px-4 py-8 sm:px-8">
-    <div className="mx-auto w-full max-w-xl">
+  return <section className="privacy-page min-h-screen bg-brand-cream px-4 py-8 sm:px-8">
+    <div className="privacy-page-content mx-auto w-full">
       <header className="border-b border-brand-line pb-6">
         <Eyebrow>Your information</Eyebrow>
         <h1 className="mb-3 mt-2 text-4xl tracking-tight">What you share.<br />Where it is used.</h1>
@@ -452,7 +458,7 @@ export function ConsultationPage() {
       .catch((error: unknown) => {
         if (active) setPricingLoadError(error instanceof Error ? error.message : "Updated service prices could not be loaded.");
       });
-    void apiRequest<{ consultation_services: ConsultationServices }>("/config")
+    void apiRequest<{ consultation_services: ConsultationServices }>("/config/consultation")
       .then(({ consultation_services: services }) => {
         if (!active) return;
         setServiceConfig(services);
@@ -520,32 +526,36 @@ export function ConsultationPage() {
   const serviceDetails = serviceConfig[activeService];
   const dropdownServices = consultationDropdownServices(serviceConfig);
   const callMessage = encodeURIComponent("Hello Careergrill, I would like to arrange a free 15-minute consultation. Please let me know what times are available.");
-  return <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 py-7">
-    <Link className="mb-5 inline-block text-sm font-semibold text-brand-purple hover:underline" href="/services">← All services</Link>
+  return <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 py-20">
+    <Link className="mb-5 inline-block text-sm font-semibold text-brand-purple underline hover:text-brand-orange-dark" href="/services">All services</Link>
     <header className="mb-6 max-w-3xl">
       <Eyebrow>{mode === "call" ? "Free 15-minute consultation" : "Discuss your support"}</Eyebrow>
-      <h1 className="my-2 text-4xl">{mode === "call" ? "Talk through your next step." : "Tell us what you need."}</h1>
-      <p className="mb-0 leading-relaxed text-brand-muted">{mode === "call"
+      <h1 className="my-2 text-5xl font-extrabold">{mode === "call" ? "Talk through your next step." : "Tell us what you need."}</h1>
+      <p className="mb-0 leading-relaxed text-xl font-medium text-brand-muted">{mode === "call"
         ? "Bring your goal, deadline and the part you want help with. Use this short call to decide what support makes sense."
         : "Share your goal and the help you want. Review the message, edit it if needed, then copy it or send it through WhatsApp or email."}</p>
     </header>
     {mode === "call" ? <div className="grid gap-4 md:grid-cols-2">
-      <article className="grid content-start gap-3 rounded border border-brand-line bg-white p-5">
+      <article className="grid content-start gap-5 rounded-md border border-brand-line bg-white py-10 px-6">
         <h2 className="mb-0 text-2xl">A focused first conversation</h2>
-        <ul className="mb-0 list-disc space-y-2 pl-5 text-sm leading-relaxed text-brand-muted">
+        <ul className="mb-0 list-disc space-y-2 pl-5 text-sm leading-relaxed font-semibold">
           <li>Explain your job search or application goal</li>
           <li>Ask about the support available</li>
           <li>Agree a next step, if you want one</li>
         </ul>
-        <p className="mb-0 text-sm leading-relaxed text-brand-muted">The 15-minute consultation is free. A full document review or ongoing application support is quoted separately before work begins.</p>
-        <a className={buttonVariants({ variant: "brand", size: "sm" })} href={`https://wa.me/2348129982113?text=${callMessage}`} target="_blank" rel="noreferrer">Arrange a time on WhatsApp</a>
-        <small className="text-xs text-brand-muted">Message Careergrill to ask about available times.</small>
+        <p className="mb-0 text-base leading-relaxed text-brand-muted">The 15-minute consultation is free. A full document review or ongoing application support is quoted separately before work begins.</p>
+        <Link href={`https://calendar.app.google/p9A1qkxExinCpXE67`} target="_blank" rel="noreferrer">
+          <Button variant="brand">Choose a time on Google Calendar</Button>
+        </Link>
+        <small className="text-xs text-brand-muted">Choose an available time and confirm your booking on Google Calendar.</small>
       </article>
-      <article className="grid content-start gap-3 rounded border border-brand-line bg-brand-blue p-5">
-        <h2 className="mb-0 text-2xl">Prefer to arrange it by message?</h2>
-        <p className="mb-0 text-sm leading-relaxed text-brand-muted">Send your goal and a few suitable times. Careergrill will confirm availability.</p>
-        <a className={buttonVariants({ variant: "outline", size: "sm" })} href={`https://wa.me/2348129982113?text=${callMessage}`} target="_blank" rel="noreferrer">Ask about a free call on WhatsApp</a>
-        <Link className="text-sm font-semibold text-brand-purple hover:underline" href="/consultation">Draft a service enquiry</Link>
+      <article className="grid content-start gap-5 rounded-md border border-brand-line bg-white py-10 px-6">
+        <h2 className="mb-0 text-3xl">Prefer to arrange it by message?</h2>
+        <p className="mb-0 text-base leading-relaxed text-brand-muted">Send your goal and a few suitable times. Careergrill will confirm availability.</p>
+        <Link href={`https://wa.me/2348129982113?text=${callMessage}`} target="_blank" rel="noreferrer">
+          <Button variant="outline">Ask about a free call on WhatsApp</Button>
+        </Link>
+        <Link className="text-base font-semibold text-brand-muted hover:text-brand-orange-dark underline" href="/consultation">Draft a service enquiry</Link>
       </article>
     </div> : <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,.8fr)]">
       <form className="grid content-start gap-4 rounded border border-brand-line bg-white p-5" onSubmit={prepare}>
@@ -917,7 +927,7 @@ export function AuditPage() {
       <Link className="text-sm font-semibold text-brand-purple underline underline-offset-2 hover:no-underline" href="/">← Back to Careergrill</Link>
       <div>
         <Eyebrow>AI Career Audit</Eyebrow>
-        <h1 className="my-2 text-[40px] font-extrabold leading-tight">Review your preparation with AI.</h1>
+        <h1 className="audit-heading my-2 font-extrabold leading-tight">Review your preparation with AI.</h1>
         <p className="mb-0 text-base leading-relaxed text-brand-muted">Tell us about the role, course, scholarship or fellowship you’re considering and one example of your experience. Get feedback on the details you share, questions to resolve and actions to take.</p>
       </div>
       <ol className="grid gap-2">

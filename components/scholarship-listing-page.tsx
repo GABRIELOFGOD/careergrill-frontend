@@ -104,8 +104,8 @@ export function ScholarshipListingPage() {
 
   return (
     <>
-      <section className="bg-brand-sage">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-64 grid-cols-1 items-center gap-6 py-9 md:grid-cols-[minmax(0,1fr)_minmax(15rem,.65fr)]">
+      <section className="scholarships-page-hero bg-brand-sage">
+        <div className="scholarships-page-hero-inner mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-64 grid-cols-1 items-center gap-6 py-9 md:grid-cols-[minmax(0,1fr)_minmax(15rem,.65fr)]">
           <div>
             <Eyebrow>For African students &amp; graduates</Eyebrow>
             <h1 className="mb-3 text-5xl font-extrabold tracking-tight sm:text-6xl">Find scholarships<br /><em>for your study goals.</em></h1>

@@ -44,7 +44,7 @@ export default function ScholarshipDetailView({
       <header className="mb-5 flex items-start justify-between gap-6 border-b border-brand-line pb-5 max-md:flex-col">
         <div>
           <Eyebrow>{field(item, "provider") || item.category || "Scholarship provider"}</Eyebrow>
-          <h1 className="mb-3 text-4xl tracking-tight">{item.title}</h1>
+          <h1 className="scholarship-detail-title mb-3 tracking-tight">{item.title}</h1>
           <p className="mb-2 text-base text-brand-muted">{item.excerpt}</p>
           {awardBadge && <span className="inline-flex rounded-full bg-brand-blue px-2.5 py-1 text-xs font-semibold text-brand-purple">{awardBadge}</span>}
         </div>

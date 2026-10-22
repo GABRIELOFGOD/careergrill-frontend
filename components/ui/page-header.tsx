@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Container from "../container";
 import { Eyebrow } from "../site-shell";
 
@@ -6,23 +7,20 @@ const PageHeader = ({
   description,
   header
 }: {
-  title: string;
+  title: ReactNode;
   description?: string;
   header: string;
 }) => {
   return (
-    <div className="bg-brand-sage">
-      <Container>
-        <div className="grid grid-cols-2 gap-4 py-5">
-        <div className="flex flex-col gap-2 py-12">
+    <section className="page-header">
+      <Container className="page-header-inner">
+        <div className="page-header-content flex flex-col">
           <Eyebrow>{header}</Eyebrow>
-          <h1 className="mb-3 text-6xl tracking-tight font-extrabold">{title}</h1>
-          {description && <p className="mb-0 text-lg text-brand-muted">{description}</p>}
-        </div>
+          <h1>{title}</h1>
+          {description && <p>{description}</p>}
         </div>
       </Container>
-
-    </div>
+    </section>
   )
 }
 

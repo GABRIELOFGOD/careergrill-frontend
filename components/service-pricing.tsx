@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api";
 import type { ServicePricingCopy } from "@/lib/public-copy";
 import type { ServicePricingConfig } from "@/lib/service-pricing";
-import { usePublicCopy } from "./use-public-copy";
+import { usePublicPricingCopy } from "./use-public-pricing-copy";
 
 type Category = "career" | "admissions" | "scholarships" | "mba";
 
@@ -130,7 +130,7 @@ function CancellationRows({ copy, stages }: { copy: ServicePricingCopy["cancella
 }
 
 export default function ServicePricing() {
-  const { copy: siteCopy, error: copyError, loading: copyLoading } = usePublicCopy();
+  const { copy, error: copyError, loading: copyLoading } = usePublicPricingCopy();
   const [pricing, setPricing] = useState<ServicePricingConfig | null>(null);
   const [pricingLoadError, setPricingLoadError] = useState("");
   const [pricingLoading, setPricingLoading] = useState(true);
@@ -156,7 +156,6 @@ export default function ServicePricing() {
       .finally(() => setPricingLoading(false));
   }, []);
 
-  const copy = siteCopy?.pricing;
   if (!pricing || !copy) {
     const loading = pricingLoading || copyLoading;
     const error = pricingLoadError || copyError;

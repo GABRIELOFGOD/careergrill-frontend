@@ -5,16 +5,21 @@ import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/api";
 import { servicePageFromContent, type ServicePageData } from "@/lib/services";
 import type { SiteContent } from "@/lib/site-data";
+import { servicesMarketingCopy } from "@/lib/static-public-copy";
 import { Eyebrow } from "@/components/site-shell";
 import RichContent from "@/components/rich-content";
-import { usePublicCopy } from "./use-public-copy";
 import ServicePricing from "@/components/service-pricing";
 import { Button, buttonVariants } from "@/components/ui/button";
+
+type PublishedFaq = { id: string; title: string; body: string; category: string };
 
 export default function ServicesPage() {
   const [cmsServices, setCmsServices] = useState<SiteContent[]>([]);
   const [serviceLoadError, setServiceLoadError] = useState("");
-  const { copy, error: copyError, loading: copyLoading } = usePublicCopy();
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [serviceFaqs, setServiceFaqs] = useState<PublishedFaq[]>([]);
+  const [faqLoadError, setFaqLoadError] = useState("");
+  const [faqsLoading, setFaqsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -24,6 +29,24 @@ export default function ServicesPage() {
       })
       .catch((error: unknown) => {
         if (active) setServiceLoadError(error instanceof Error ? error.message : "Service information could not be loaded.");
+      })
+      .finally(() => {
+        if (active) setServicesLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void apiRequest<{ items: PublishedFaq[] }>("/content/faqs")
+      .then(({ items }) => {
+        if (active) setServiceFaqs(items);
+      })
+      .catch((error: unknown) => {
+        if (active) setFaqLoadError(error instanceof Error ? error.message : "FAQs could not be loaded.");
+      })
+      .finally(() => {
+        if (active) setFaqsLoading(false);
       });
     return () => { active = false; };
   }, []);
@@ -33,21 +56,19 @@ export default function ServicesPage() {
     .filter((entry): entry is { item: SiteContent; page: ServicePageData } => entry.page !== null), [cmsServices]);
   const additionalServices = useMemo(() => cmsServices.filter((item) => !servicePageFromContent(item.data)), [cmsServices]);
 
-  if (!copy) {
-    return <p className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-8" role={copyLoading ? "status" : "alert"}>
-      {copyLoading ? "Loading service information…" : `Service information could not be loaded: ${copyError}`}
-    </p>;
-  }
-  const content = copy.services;
-  const serviceFaqs = copy.service_faqs;
+  const content = servicesMarketingCopy;
+  const [heroTitleLead, ...heroTitleAccent] = content.hero.title.split("\n");
 
   return (
     <div className="flex flex-col gap-10">
-      <section className="bg-brand-sage">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-88 grid-cols-1 items-center gap-10 py-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(18.75rem,.8fr)] lg:gap-18 lg:py-11">
+      <section className="services-page-hero bg-brand-sage">
+        <div className="services-page-hero-inner mx-auto w-full max-w-7xl px-4 sm:px-8 grid min-h-88 grid-cols-1 items-center gap-10 py-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(18.75rem,.8fr)] lg:gap-18 lg:py-11">
           <div>
             <Eyebrow className="text-brand-eyebrow">{content.hero.eyebrow}</Eyebrow>
-            <h1 className="mb-4 mt-2 max-w-3xl whitespace-pre-line text-5xl leading-tight tracking-[-0.055em] sm:text-6xl"><em>{content.hero.title}</em></h1>
+            <h1 className="mb-4 mt-2 max-w-3xl whitespace-pre-line text-5xl leading-tight tracking-[-0.055em] sm:text-6xl">
+              <span>{heroTitleLead}</span>
+              {heroTitleAccent.length > 0 && <><br /><em className="text-brand-orange-dark">{heroTitleAccent.join("\n")}</em></>}
+            </h1>
             <p className="mb-5 max-w-2xl text-lg leading-relaxed text-brand-muted">{content.hero.description}</p>
             <div className="flex flex-wrap items-center gap-4">
               <Link className={buttonVariants({ variant: "brand" })} href="/consultation?mode=call">{content.hero.callLink} <span aria-hidden="true">↗</span></Link>
@@ -84,10 +105,11 @@ export default function ServicesPage() {
           ))}
         </div>
         {serviceLoadError && <p className="mb-0 mt-3 text-sm text-red-800" role="alert">{serviceLoadError}</p>}
-        {!serviceLoadError && !cmsServices.length && <p className="mb-0 mt-3 text-sm text-brand-muted">No services are currently published.</p>}
+        {servicesLoading && <p className="mb-0 mt-3 text-sm text-brand-muted" role="status">Loading available services…</p>}
+        {!servicesLoading && !serviceLoadError && !cmsServices.length && <p className="mb-0 mt-3 text-sm text-brand-muted">No services are currently published.</p>}
       </section>
 
-      <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 my-0 mb-3 grid items-center gap-8 rounded-lg bg-brand-purple p-7 text-white lg:grid-cols-[minmax(0,1fr)_minmax(20.625rem,.85fr)] lg:gap-14">
+      <section className="services-audit-feature mx-auto w-full max-w-7xl px-4 sm:px-8 my-0 mb-3 grid items-center gap-8 rounded-lg bg-brand-purple p-7 text-white lg:grid-cols-[minmax(0,1fr)_minmax(20.625rem,.85fr)] lg:gap-14">
         <div>
           <Eyebrow className="text-brand-footer-hover">{content.audit.eyebrow}</Eyebrow>
           <h2 className="mb-3 mt-2 whitespace-pre-line text-4xl text-white">{content.audit.title}</h2>
@@ -119,16 +141,19 @@ export default function ServicesPage() {
           <Link className="font-semibold text-brand-purple hover:text-brand-orange-dark underline" href="/faq">{content.faq.link}</Link>
         </div>
         <div className="divide-y divide-brand-line space-y-3">
-          {serviceFaqs.map((faq) => (
-            <details key={faq.question} className="group pb-3">
-              <summary className="flex cursor-pointer list-none items-center gap-2 py-3 text-sm font-bold marker:hidden [&::-webkit-details-marker]:hidden"><span className="transition-transform group-open:rotate-90">▸</span>{faq.question}</summary>
-              <p className="mb-0 pb-3 pl-4 text-sm leading-relaxed text-brand-muted">{faq.answer}</p>
+          {serviceFaqs.slice(0, 4).map((faq) => (
+            <details key={faq.id} className="group pb-3">
+              <summary className="flex cursor-pointer list-none items-center gap-2 py-3 text-sm font-bold marker:hidden [&::-webkit-details-marker]:hidden"><span className="transition-transform group-open:rotate-90">▸</span>{faq.title}</summary>
+              <RichContent value={faq.body} className="mb-0 pb-3 pl-4 text-sm leading-relaxed text-brand-muted" />
             </details>
           ))}
+          {faqLoadError && <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">FAQs could not be loaded: {faqLoadError}</p>}
+          {faqsLoading && <p className="text-sm text-brand-muted" role="status">Loading FAQs…</p>}
+          {!faqsLoading && !faqLoadError && !serviceFaqs.length && <p className="text-sm text-brand-muted">No FAQs have been published yet.</p>}
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-7xl px-4 sm:px-8 mb-10 flex flex-col items-start justify-between gap-10 rounded-md border border-brand-line bg-brand-sage p-6 md:flex-row md:items-center">
+      <section className="services-testimonial-callout mx-auto w-full max-w-7xl px-4 sm:px-8 mb-10 flex flex-col items-start justify-between gap-10 rounded-md border border-brand-line bg-brand-sage p-6 md:flex-row md:items-center">
         <div><Eyebrow className="text-brand-eyebrow">{content.testimonial.eyebrow}</Eyebrow><h2 className="mb-2 whitespace-pre-line text-3xl leading-normal">{content.testimonial.title}</h2><p className="mb-0 text-sm text-brand-muted">{content.testimonial.description}</p></div>
         <Link href="/client-feedback">
           <Button variant={"outline"}>{content.testimonial.link} <span aria-hidden="true">↗</span></Button>

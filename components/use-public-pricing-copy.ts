@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/api";
-import type { PublicCopyConfiguration } from "@/lib/public-copy";
+import type { ServicePricingCopy } from "@/lib/public-copy";
 
-export function usePublicCopy() {
-  const [copy, setCopy] = useState<PublicCopyConfiguration | null>(null);
+export function usePublicPricingCopy() {
+  const [copy, setCopy] = useState<ServicePricingCopy | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    void apiRequest<PublicCopyConfiguration>("/config")
-      .then((result) => {
-        if (active) setCopy(result);
+    void apiRequest<{ pricing: ServicePricingCopy }>("/config/pricing-copy")
+      .then(({ pricing }) => {
+        if (active) setCopy(pricing);
       })
       .catch((cause: unknown) => {
-        if (active) setError(cause instanceof Error ? cause.message : "Public business content could not be loaded.");
+        if (active) setError(cause instanceof Error ? cause.message : "Service pricing details could not be loaded.");
       })
       .finally(() => {
         if (active) setLoading(false);

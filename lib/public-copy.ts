@@ -135,10 +135,3 @@ export type ServicePricingCopy = {
   cancellation: { title: string; amounts: string[]; note: string };
   callout: { title: string; description: string; primaryLink: string; secondaryLink: string };
 };
-
-export type PublicCopyConfiguration = {
-  home: HomeMarketingCopy;
-  services: ServicesMarketingCopy;
-  pricing: ServicePricingCopy;
-  service_faqs: { question: string; answer: string }[];
-};

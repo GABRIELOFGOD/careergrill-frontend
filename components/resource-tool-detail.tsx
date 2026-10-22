@@ -6,7 +6,7 @@ import { apiRequest, apiUrl } from "@/lib/api";
 import type { ResourceAttachment, ResourceInput } from "@/lib/resource-tools";
 import { readResourceSchema } from "@/lib/resource-tools";
 import type { SiteContent } from "@/lib/site-data";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Eyebrow } from "@/components/site-shell";
 import RichContent from "@/components/rich-content";
 
@@ -30,6 +30,8 @@ export default function ResourceToolDetail({ item }: { item: SiteContent }) {
   const [work, setWork] = useState<SavedWork>({ answers: {}, completed: {} });
   const [attachments, setAttachments] = useState<ResourceAttachment[]>([]);
   const [attachmentError, setAttachmentError] = useState("");
+  const [relatedArticle, setRelatedArticle] = useState<SiteContent | null>(null);
+  const [relatedArticleError, setRelatedArticleError] = useState("");
   const sectionIds = useMemo(() => schema.sections.map((section) => section.id), [schema.sections]);
 
   useEffect(() => {
@@ -53,6 +55,22 @@ export default function ResourceToolDetail({ item }: { item: SiteContent }) {
     apiRequest<{ items: ResourceAttachment[] }>(`/content/resources/${encodeURIComponent(item.slug)}/attachments`)
       .then(({ items }) => setAttachments(items))
       .catch((error: unknown) => setAttachmentError(error instanceof Error ? error.message : "Resource downloads could not be loaded."));
+  }, [item.slug]);
+
+  useEffect(() => {
+    let active = true;
+    setRelatedArticle(null);
+    setRelatedArticleError("");
+    apiRequest<{ items: SiteContent[] }>("/content?type=article")
+      .then(({ items }) => {
+        if (!active) return;
+        const related = items.find((article) => article.data.related_resource_slug === item.slug);
+        setRelatedArticle(related ?? null);
+      })
+      .catch((error: unknown) => {
+        if (active) setRelatedArticleError(error instanceof Error ? error.message : "Related articles could not be loaded.");
+      });
+    return () => { active = false; };
   }, [item.slug]);
 
   function updateAnswer(key: string, value: string) {
@@ -115,50 +133,83 @@ export default function ResourceToolDetail({ item }: { item: SiteContent }) {
     </label>;
   }
 
-  return <article className="mx-auto w-full max-w-7xl px-4 py-7 sm:px-8">
-    <Link className="text-sm font-semibold text-brand-purple hover:underline" href="/resources">← Back to resources</Link>
-    <header className="my-6 grid gap-3 rounded border border-brand-line bg-brand-sage p-5 sm:p-7">
-      <Eyebrow>{item.category} / {String(item.data.format ?? "Resource")}</Eyebrow>
-      <h1 className="mb-0 max-w-4xl text-4xl leading-tight">{item.title}</h1>
-      <p className="mb-0 max-w-3xl text-lg leading-relaxed text-brand-muted">{item.excerpt}</p>
-      <div className="flex flex-wrap gap-2 border-t border-brand-line pt-4 print:hidden">
-        <button className={buttonVariants({ variant: "brand", size: "sm" })} type="button" onClick={downloadNotes}>Download notes as TXT</button>
-        <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={() => window.print()}>Print / save as PDF</button>
-        <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={clearWork}>Clear tool</button>
+  return <article className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-8">
+    <nav className="resource-tool-breadcrumb mb-5 flex items-center gap-3 text-sm" aria-label="Breadcrumb">
+      <Link className="text-brand-purple underline underline-offset-2" href="/resources">Resources</Link>
+      <span aria-hidden="true">/</span>
+      <span>{item.category}</span>
+    </nav>
+    <header className=" mb-8 grid justify-items-center gap-3">
+      <Eyebrow className="mb-0 text-xs">{String(item.data.format ?? item.category)}</Eyebrow>
+      <h1 className="mb-0 text-6xl">{item.title}</h1>
+      {item.excerpt && <p className="mb-0 text-xl">{item.excerpt}</p>}
+      <div className="resource-tool-byline flex items-center gap-2" aria-label="Published by Careergrill">
+        <span className="resource-tool-byline-mark" aria-hidden="true">C</span>
+        <span><strong>Careergrill</strong><small>{String(item.data.format ?? "Resource")}</small></span>
       </div>
     </header>
-    {attachments.length > 0 && <section className="mb-6 rounded border border-brand-line bg-white p-4">
-      <h2 className="mb-2 text-xl">Downloads</h2>
-      <ul className="mb-0 grid gap-2">{attachments.map((attachment) => <li key={attachment.id}>
-        <a className="font-semibold text-brand-purple underline" href={apiUrl(`/content/resources/${encodeURIComponent(item.slug)}/attachments/${attachment.id}/download`)}>{attachment.filename}</a>
-        <span className="ml-2 text-xs text-brand-muted">{(attachment.size_bytes / 1024).toFixed(0)} KB</span>
-      </li>)}</ul>
-    </section>}
-    {attachmentError && <p className="mb-5 text-sm text-red-700" role="alert">Downloads could not be loaded: {attachmentError}</p>}
-    {item.body && <RichContent value={item.body} className="mb-6 rounded border border-brand-line bg-white p-5 leading-relaxed" />}
-    <div className="grid items-start gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <nav className="grid gap-2 rounded border border-brand-line bg-white p-4 lg:sticky lg:top-24 print:hidden" aria-label="In this tool">
-        <h2 className="mb-1 text-lg">In this tool</h2>
-        {schema.sections.map((section, index) => <a className="flex items-start gap-2 text-sm text-brand-purple hover:underline" href={`#${section.id}`} key={section.id}>
-          <span className="font-bold">{String(index + 1).padStart(2, "0")}</span><span>{section.title}</span>
-        </a>)}
-      </nav>
-      <div className="grid gap-5">
-        {schema.sections.map((section, index) => <section className="scroll-mt-24 rounded border border-brand-line bg-white p-5 sm:p-7" id={section.id} key={section.id}>
-          <div className="mb-4 flex items-start justify-between gap-4 border-b border-brand-line pb-3">
-            <div><Eyebrow>Section {index + 1}</Eyebrow><h2 className="mb-0 mt-1 text-2xl">{section.title}</h2></div>
-            <label className="flex shrink-0 items-center gap-2 text-xs font-semibold text-brand-muted">
-              <input className="size-4 accent-brand-purple" type="checkbox" checked={work.completed[section.id] ?? false} onChange={(event) => updateCompleted(section.id, event.target.checked)} />
-              Complete
-            </label>
-          </div>
-          {section.content && <RichContent value={section.content} className="mb-5 leading-relaxed" />}
-          {section.fields.length > 0 && <div className="grid gap-4 border-t border-brand-line pt-4">{section.fields.map((field) => renderField(section.id, field))}</div>}
-        </section>)}
-        {!schema.sections.length && item.body && <p className="rounded border border-brand-line bg-white p-5 text-sm text-brand-muted">This resource does not have interactive sections yet.</p>}
+    <div className="grid md:grid-cols-3 items-start gap-8 md:gap-20 md:px-20">
+      <div className="col-span-2 min-w-0">
+        {item.body && <RichContent value={item.body} className="resource-tool-content mb-6 leading-relaxed" />}
+        {attachmentError && <p className="mb-5 text-sm text-red-700" role="alert">Downloads could not be loaded: {attachmentError}</p>}
+        <div className="grid gap-5">
+          {schema.sections.map((section, index) => <section className=" scroll-mt-24" id={section.id} key={section.id}>
+            <div className="mb-4">
+              <Eyebrow className="mb-2">{String(index + 1).padStart(2, "0")}</Eyebrow>
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="mb-0 text-3xl">{section.title}</h2>
+                <label className="flex shrink-0 items-center gap-2 text-xs font-semibold text-brand-muted">
+                  <input className="size-4 accent-brand-purple" type="checkbox" checked={work.completed[section.id] ?? false} onChange={(event) => updateCompleted(section.id, event.target.checked)} />
+                  Complete
+                </label>
+              </div>
+            </div>
+            {section.content && <RichContent value={section.content} className="resource-tool-content mb-4 leading-relaxed" />}
+            {section.fields.length > 0 && <div className="resource-tool-field-panel grid gap-3">{section.fields.map((field) => renderField(section.id, field))}</div>}
+          </section>)}
+          {!schema.sections.length && item.body && <p className="text-sm text-brand-muted">This resource does not have interactive sections yet.</p>}
+        </div>
+        {sectionIds.length > 0 && <div className="resource-tool-actions mt-5 flex flex-wrap items-center gap-2 border-t border-brand-line pt-4 print:hidden">
+          <button className={buttonVariants({ variant: "brand", size: "sm" })} type="button" onClick={downloadNotes}>Download your notes (TXT)</button>
+          <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={() => window.print()}>Print / save as PDF</button>
+          <button className="text-sm text-brand-purple underline underline-offset-2" type="button" onClick={clearWork}>Clear this tool</button>
+        </div>}
+        {sectionIds.length > 0 && <p className="mt-3 text-xs text-brand-muted print:hidden">Your responses stay in this browser tab. Download or print a copy before closing it.</p>}
       </div>
+      <aside className="grid w-fit gap-3 top-10 sticky print:hidden">
+        {schema.sections.length > 0 && <nav className="resource-tool-index grid gap-2 p-4 print:hidden" aria-label="In this tool">
+          <h2 className="mb-1 text-base">In this tool</h2>
+          {schema.sections.map((section, index) => <a className="flex items-start gap-2 text-sm text-brand-purple hover:underline" href={`#${section.id}`} key={section.id}>
+            <span>{index + 1}.</span><span>{section.title}</span>
+          </a>)}
+        </nav>}
+        {relatedArticle && <div className="resource-tool-related-article border border-gray-200 rounded-md bg-white grid gap-3 p-4">
+          <span className="text-xs uppercase font-semibold">Read the guide</span>
+          <strong className="text-xl font-bold leading-tight tracking-tighter">{relatedArticle.title}</strong>
+          <Link className="resource-tool-card-link underline hover:text-brand-orange-dark text-sm font-semibold text-brand-ink" href={`/blog/${encodeURIComponent(relatedArticle.slug)}`}>Read the article</Link>
+        </div>}
+        {relatedArticleError && <p className="rounded border border-red-300 bg-red-50 p-3 text-xs text-red-800" role="alert">Related article could not be loaded: {relatedArticleError}</p>}
+        <section className="resource-tool-consultation grid gap-3 p-4 bg-brand-footer-hover/20 rounded-md">
+          <h2 className="text-lg font-extrabold">Want feedback on your preparation?</h2>
+          <p className="text-sm">Bring your draft, the official instructions and your deadline to the conversation.</p>
+          <Link href="/consultation?mode=call">
+            <Button variant="outline" className="w-full">
+              Discuss a CV review
+            </Button>
+          </Link>
+        </section>
+        {attachments.length > 0 && <section className="resource-tool-downloads grid gap-2 p-4">
+          <h2 className="mb-0 text-base">Downloads</h2>
+          <ul className="mb-0 grid gap-2">{attachments.map((attachment) => <li key={attachment.id}>
+            <a className="text-sm font-semibold text-brand-purple underline" href={apiUrl(`/content/resources/${encodeURIComponent(item.slug)}/attachments/${attachment.id}/download`)}>{attachment.filename}</a>
+            <span className="ml-2 block text-xs text-brand-muted">{(attachment.size_bytes / 1024).toFixed(0)} KB</span>
+          </li>)}</ul>
+        </section>}
+      </aside>
     </div>
-    {sectionIds.length > 0 && <p className="mt-4 text-center text-xs text-brand-muted print:hidden">Your responses stay in this browser tab. Download or print a copy before closing it.</p>}
+    <div className="resource-tool-back mt-10 border-t border-brand-line pt-4">
+      <Link className="text-sm font-semibold text-brand-purple underline underline-offset-2" href="/resources">Back to all resources</Link>
+    </div>
     <style jsx global>{`@media print { nav, header button, a[href="/resources"] { display: none !important; } body { background: white !important; } section { break-inside: avoid; } }`}</style>
   </article>;
 }
