@@ -69,10 +69,10 @@ export function SiteChrome({ children }: { children: ReactNode }) {
   return <div className="min-h-screen bg-brand-cream text-brand-ink font-sans">
     <a className="absolute -top-16 left-4 z-50 bg-brand-ink px-4 py-2.5 text-white focus:top-3" href="#main-content">Skip to content</a>
     <Header />
-    <div className="flex min-h-10 flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-brand-line bg-brand-cream px-4.5 py-2 text-center text-sm tracking-wide text-brand-muted sm:justify-end sm:px-8">
+    {/* <div className="flex min-h-10 flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-brand-line bg-brand-cream px-4.5 py-2 text-center text-sm tracking-wide text-brand-muted sm:justify-end sm:px-8">
       <span>Browse freely. Sign in to save work and generate AI feedback.</span>
       <Link className="text-brand-ink transition-colors hover:text-brand-orange" href="/signin">Sign in</Link>
-    </div>
+    </div> */}
     <main id="main-content">{children}</main>
     <Footer />
   </div>;
