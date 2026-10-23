@@ -31,6 +31,7 @@ interface Settings {
   ai_model: string;
   ai_models: Record<AiProvider, string>;
   career_audit_prompt: string;
+  gtm_container_id: string;
   service_pricing: ServicePricingConfig;
   storage_provider: "supabase" | "cloudinary";
   configured_ai_providers: AiProvider[];
@@ -238,6 +239,7 @@ export default function AdminConsole() {
       google: "gemini-2.5-flash",
     },
     career_audit_prompt: "",
+    gtm_container_id: "",
     service_pricing: null as ServicePricingConfig | null,
     storage_provider: "supabase" as Settings["storage_provider"],
     ai_api_key: "",
@@ -330,6 +332,7 @@ export default function AdminConsole() {
         ai_model: settingsResult.ai_model,
         ai_models: settingsResult.ai_models,
         career_audit_prompt: settingsResult.career_audit_prompt,
+        gtm_container_id: settingsResult.gtm_container_id,
         service_pricing: settingsResult.service_pricing,
         storage_provider: settingsResult.storage_provider,
       }));
@@ -643,7 +646,7 @@ export default function AdminConsole() {
     setNotice("");
     const aiModels = { ...settingsForm.ai_models, [settingsForm.ai_provider]: settingsForm.ai_model };
     const payload = {
-      ...Object.fromEntries(Object.entries(settingsForm).filter(([key, value]) => key !== "service_pricing" && value !== "")),
+      ...Object.fromEntries(Object.entries(settingsForm).filter(([key, value]) => !["service_pricing", "gtm_container_id"].includes(key) && value !== "")),
       ai_models: aiModels,
     };
     try {
@@ -698,6 +701,28 @@ export default function AdminConsole() {
       setNotice("Career Audit instructions saved.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not save Career Audit instructions.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveGtmContainerId(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setNotice("");
+    try {
+      const containerId = settingsForm.gtm_container_id.trim().toUpperCase();
+      await apiRequest("/admin/settings", {
+        method: "PUT",
+        body: JSON.stringify({ gtm_container_id: containerId }),
+      });
+      setSettings((current) => current ? { ...current, gtm_container_id: containerId } : current);
+      setSettingsForm((current) => ({ ...current, gtm_container_id: containerId }));
+      setNotice(containerId
+        ? "Google Tag Manager saved. Analytics tags will load for all visitors."
+        : "Google Tag Manager removed.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save Google Tag Manager.");
     } finally {
       setBusy(false);
     }
@@ -911,6 +936,13 @@ export default function AdminConsole() {
         </section> : null}
         {section === "settings" ? <>
           <section className="grid items-start gap-4 xl:grid-cols-2 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-sm [&_label]:font-semibold [&_input]:min-h-10 [&_input]:rounded [&_input]:border [&_input]:border-brand-line [&_input]:px-3 [&_input]:py-2 [&_input]:font-normal [&_select]:min-h-10 [&_select]:rounded [&_select]:border [&_select]:border-brand-line [&_select]:bg-white [&_select]:px-3 [&_select]:py-2 [&_select]:font-normal">
+            <form className="grid content-start gap-3 rounded border border-brand-line bg-white p-5" onSubmit={(event) => void saveGtmContainerId(event)}>
+              <div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">GOOGLE TAG MANAGER</span><h2 className="mb-0 mt-1 text-2xl">Measure site activity.</h2><span className="text-xs font-semibold text-brand-purple">{settings?.gtm_container_id ? "● Connected" : "○ Not configured"}</span></div>
+              <p className="mb-0 text-sm text-brand-muted">Enter your GTM container ID, not the full script snippet. When configured, the container loads for every visitor on every page.</p>
+              <label>Container ID<input value={settingsForm.gtm_container_id} onChange={(event) => setSettingsForm((current) => ({ ...current, gtm_container_id: event.target.value }))} placeholder="GTM-XXXXXXX" pattern="GTM-[A-Za-z0-9]+" /></label>
+              <small className="text-xs text-brand-muted">Leave blank and save to disable Google Tag Manager.</small>
+              <button className={buttonVariants({ variant: "brand", size: "sm" })} disabled={busy}>{busy ? "Saving…" : "Save Google Tag Manager"}</button>
+            </form>
             <form className="grid content-start gap-3 rounded border border-brand-line bg-white p-5" onSubmit={(event) => void saveSettings(event)}>
               <div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">AI PROVIDER</span><h2 className="mb-0 mt-1 text-2xl">Choose your writing assistant.</h2><span className="text-xs font-semibold text-brand-purple">{settings?.configured_ai_providers.length ? "● Connected" : "○ Not connected"}</span></div>
               <p className="mb-0 text-sm text-brand-muted">Bring your own provider key. Keys are encrypted with AES-256-GCM on the server and never shown again after saving.</p>

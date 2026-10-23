@@ -413,6 +413,10 @@ export function PrivacyPage() {
           <p className="mb-0 text-sm leading-relaxed text-brand-muted">A prepared enquiry remains in this tab until you send it through email or WhatsApp. Those services and the linked booking provider process information under their own policies. A consultation and any paid human review are arranged separately from the AI audit.</p>
         </section>
         <section className="border-b border-brand-line py-5">
+          <h2 className="mb-2 text-lg font-bold">Website analytics</h2>
+          <p className="mb-0 text-sm leading-relaxed text-brand-muted">When configured by an administrator, Google Tag Manager loads on every page visit and may run analytics or other tags configured in that container. Those tags may collect information such as pages viewed, browser and device details, and interactions. Google and other services activated through the container may use cookies or similar technologies and process information under their own policies. Learn more in <a className="font-semibold text-brand-purple underline" href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google’s privacy policy</a>.</p>
+        </section>
+        <section className="border-b border-brand-line py-5">
           <h2 className="mb-2 text-lg font-bold">Keeping and deleting information</h2>
           <p className="mb-0 text-sm leading-relaxed text-brand-muted">Saved work remains available in your account until you delete it or request its removal. You can delete individual audits in <Link className="font-semibold text-brand-purple underline" href="/my-audits">My audits</Link> and remove saved opportunities in your workspace. To request removal of other account-linked information or ask about a copy, email <a className="font-semibold text-brand-purple underline" href="mailto:info@careergrill.com">info@careergrill.com</a>. Hosting providers may retain operational records or backups under their own retention arrangements.</p>
         </section>
