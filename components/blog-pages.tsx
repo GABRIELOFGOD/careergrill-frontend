@@ -35,6 +35,16 @@ function articleReadTime(item: SiteContent): string {
   return Number.isFinite(minutes) && minutes > 0 ? `${minutes} min read` : "Article";
 }
 
+function articleDate(item: SiteContent): string {
+  const sourceDate = item.data.published_date;
+  const date = typeof sourceDate === "string"
+    ? new Date(`${sourceDate}T00:00:00Z`)
+    : item.published_at ? new Date(item.published_at) : null;
+  return date && !Number.isNaN(date.getTime())
+    ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date)
+    : "";
+}
+
 function BlogArtwork({ item, featured = false }: { item: SiteContent; featured?: boolean }) {
   const image = textValue(item.data.seo_image, "");
   if (image) {
@@ -218,7 +228,7 @@ function BlogCard({ item }: { item: SiteContent }) {
         <div className="flex items-center gap-2 text-xs text-brand-purple"><span>{item.category}</span><span>{articleReadTime(item)}</span></div>
         <h3 className="mb-2 mt-2 font-display text-xl font-extrabold leading-snug"><Link className="hover:text-brand-orange-dark" href={contentHref("article", item.slug)}>{item.title}</Link></h3>
         <p className="mb-3 text-sm leading-relaxed text-brand-muted">{item.excerpt}</p>
-        <div className="mt-auto flex w-full justify-between gap-2 border-t border-[#eee9f0] pt-4 text-xs text-brand-purple"><Link className="font-bold text-brand-ink underline hover:text-brand-orange-dark underline-offset-2" href={contentHref("article", item.slug)}>Read article</Link><span>{textValue(item.data.author, "Careergrill")}</span></div>
+        <div className="mt-auto flex w-full justify-between gap-2 border-t border-[#eee9f0] pt-4 text-xs text-brand-purple"><Link className="font-bold text-brand-ink underline hover:text-brand-orange-dark underline-offset-2" href={contentHref("article", item.slug)}>Read article</Link><span>{articleDate(item)}</span></div>
       </div>
     </article>
   );
@@ -226,6 +236,8 @@ function BlogCard({ item }: { item: SiteContent }) {
 
 export function BlogArticlePage({ slug, initialArticle }: { slug: string; initialArticle?: SiteContent }) {
   const [article, setArticle] = useState<SiteContent | null>(initialArticle ?? null);
+  const [articles, setArticles] = useState<SiteContent[]>([]);
+  const [articlesError, setArticlesError] = useState("");
   const [relatedResources, setRelatedResources] = useState<SiteContent[]>([]);
   const [relatedError, setRelatedError] = useState("");
   const [loading, setLoading] = useState(!initialArticle);
@@ -239,6 +251,18 @@ export function BlogArticlePage({ slug, initialArticle }: { slug: string; initia
     ? textValue(article.data.related_resource_title, related?.title ?? "")
     : related?.title ?? "";
   const relatedFormat = String(related?.data.format ?? "").toLowerCase();
+  const relatedArticles = useMemo(() => {
+    if (!article) return [];
+    const candidates = articles.filter((item) => item.slug !== article.slug);
+    return candidates
+      .sort((left, right) => {
+        const leftMatches = left.category.trim().toLowerCase() === article.category.trim().toLowerCase();
+        const rightMatches = right.category.trim().toLowerCase() === article.category.trim().toLowerCase();
+        if (leftMatches !== rightMatches) return leftMatches ? -1 : 1;
+        return String(right.published_at ?? "").localeCompare(String(left.published_at ?? ""));
+      })
+      .slice(0, 3);
+  }, [article, articles]);
 
   useEffect(() => {
     let active = true;
@@ -261,6 +285,13 @@ export function BlogArticlePage({ slug, initialArticle }: { slug: string; initia
     void apiRequest<{ items: SiteContent[] }>("/content?type=resource")
       .then(({ items }) => { if (active) setRelatedResources(items); })
       .catch((error: unknown) => { if (active) setRelatedError(error instanceof Error ? error.message : "Related resources could not be loaded."); });
+    void apiRequest<{ items: SiteContent[] }>("/content?type=article")
+      .then(({ items }) => {
+        if (!active) return;
+        setArticles(items);
+        setArticlesError("");
+      })
+      .catch((error: unknown) => { if (active) setArticlesError(error instanceof Error ? error.message : "Related articles could not be loaded."); });
     return () => { active = false; };
   }, [slug, initialArticle]);
 
@@ -320,7 +351,6 @@ export function BlogArticlePage({ slug, initialArticle }: { slug: string; initia
             </Link>
           </aside>}
           {relatedError && <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">Related resources could not be loaded: {relatedError}</p>}
-          <Link className="text-sm font-semibold text-brand-purple underline underline-offset-4" href="/blog">Back to all articles</Link>
         </div>
 
         <aside className="grid w-fit gap-3 top-10 sticky print:hidden">
@@ -341,6 +371,20 @@ export function BlogArticlePage({ slug, initialArticle }: { slug: string; initia
           </Link>
           </div>
         </aside>
+      </div>
+      <section className="mx-auto mt-8 max-w-7xl border-t border-brand-line pt-7" aria-labelledby="related-articles-title">
+        <h2 id="related-articles-title" className="mb-1 text-2xl">Related articles</h2>
+        <p className="mb-5 text-sm text-brand-muted">Keep reading about this topic.</p>
+        {articlesError
+          ? <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">Related articles could not be loaded: {articlesError}</p>
+          : relatedArticles.length
+            ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {relatedArticles.map((item) => <BlogCard item={item} key={item.id} />)}
+            </div>
+            : <p className="text-sm text-brand-muted">No related articles are available yet.</p>}
+      </section>
+      <div className="mx-auto mt-6 max-w-7xl border-t border-brand-line pt-5">
+        <Link className="text-sm font-semibold text-brand-purple underline underline-offset-4" href="/blog">Back to all articles</Link>
       </div>
     </article>
   );
