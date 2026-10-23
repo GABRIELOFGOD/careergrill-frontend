@@ -52,7 +52,7 @@ function BlogArtwork({ item, featured = false }: { item: SiteContent; featured?:
   const [imageFailed, setImageFailed] = useState(false);
   if (image && !imageFailed) {
     return (
-      <div className={cn("relative min-h-36 overflow-hidden bg-brand-sage", featured && "h-full min-h-[19.375rem]")}>
+      <div className={cn("relative min-h-36 overflow-hidden bg-brand-sage", featured && "h-full min-h-77.5")}>
         <Image
           src={imageSrc}
           alt={item.title}
@@ -79,9 +79,9 @@ function BlogArtwork({ item, featured = false }: { item: SiteContent; featured?:
   const category = textValue(item.data.cover_label, item.category || "Careergrill");
   const lines = stringList(item.data.cover_lines, ["The question", "Your evidence", "What follows"]);
   return (
-    <div className={cn("relative flex min-h-36 items-center justify-center overflow-hidden bg-brand-sage p-3", featured && "h-full min-h-[19.375rem] p-5", artworkTheme)}>
+    <div className={cn("relative flex min-h-36 items-center justify-center overflow-hidden bg-brand-sage p-3", featured && "h-full min-h-77.5 p-5", artworkTheme)}>
       <span className="absolute left-3 top-2.5 text-xs tracking-widest">CAREERGRILL / APPLICATION NOTES</span>
-      <div className={cn("w-[68%] min-h-24 rotate-[-4deg] bg-[#fffaf2] px-3 py-2.5 text-brand-ink shadow-[5px_6px_0_rgba(36,24,62,.08)]", featured && "min-h-40 w-[62%] p-4.5")}>
+      <div className={cn("w-[68%] min-h-24 rotate-[-4deg] bg-brand-footer px-3 py-2.5 text-brand-ink shadow-[5px_6px_0_rgba(36,24,62,.08)]", featured && "min-h-40 w-[62%] p-4.5")}>
         <small className="mb-1 block text-xs uppercase tracking-widest text-brand-eyebrow">{category}</small>
         {lines.slice(0, 3).map((line, index) => (
           <div className={cn("grid min-h-6 grid-cols-[1.25rem_1fr] items-center border-b border-[#e7dfe6] last:border-brand-orange", featured && "min-h-8 grid-cols-[1.75rem_1fr]")} key={`${index}-${line}`}>
