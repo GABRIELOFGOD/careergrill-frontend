@@ -24,6 +24,12 @@ function contentImage(item: SiteContent): string {
         ? new URL(configuredUrl)
         : siteUrl;
       const url = new URL(image, imageBase);
+      if (
+        (url.hostname === "careergrill.com" || url.hostname === "www.careergrill.com")
+        && url.pathname.startsWith("/media/uploads/journal/")
+      ) {
+        return absoluteSiteUrl("/opengraph-image");
+      }
       if (url.protocol === "http:" || url.protocol === "https:") return url.toString();
     } catch {
       // Invalid optional image URLs use the site-wide branded fallback.

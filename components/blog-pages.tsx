@@ -4,10 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, apiUrl } from "@/lib/api";
 import RichContent from "@/components/rich-content";
 import { Eyebrow } from "@/components/site-shell";
-import { articleSections } from "@/lib/blog-content";
+import { articleReadTimeMinutes, articleSections } from "@/lib/blog-content";
 import { type SiteContent } from "@/lib/site-data";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,8 +31,7 @@ function stringList(value: unknown, fallback: string[]): string[] {
 }
 
 function articleReadTime(item: SiteContent): string {
-  const minutes = Number(item.data.reading_minutes);
-  return Number.isFinite(minutes) && minutes > 0 ? `${minutes} min read` : "Article";
+  return `${articleReadTimeMinutes(item.body)} min read`;
 }
 
 function articleDate(item: SiteContent): string {
@@ -47,17 +46,22 @@ function articleDate(item: SiteContent): string {
 
 function BlogArtwork({ item, featured = false }: { item: SiteContent; featured?: boolean }) {
   const image = textValue(item.data.seo_image, "");
-  if (image) {
+  const imageSrc = image.startsWith("/api/")
+    ? apiUrl(image.replace(/^\/api(?=\/)/, ""))
+    : image;
+  const [imageFailed, setImageFailed] = useState(false);
+  if (image && !imageFailed) {
     return (
       <div className={cn("relative min-h-36 overflow-hidden bg-brand-sage", featured && "h-full min-h-[19.375rem]")}>
         <Image
-          src={image}
+          src={imageSrc}
           alt={item.title}
           width={1200}
           height={630}
           unoptimized
           sizes={featured ? "(max-width: 1024px) 100vw, 50vw" : "(max-width: 640px) 100vw, 33vw"}
           className="absolute inset-0 size-full object-cover"
+          onError={() => setImageFailed(true)}
         />
       </div>
     );
@@ -336,6 +340,11 @@ export function BlogArticlePage({ slug, initialArticle }: { slug: string; initia
 
       <div className="mx-auto mb-7 h-67.5 max-w-4xl overflow-hidden rounded-md"><BlogArtwork item={article} featured /></div>
 
+      {sections.length > 0 && <nav className="mx-auto mb-6 w-full max-w-4xl rounded border border-brand-line bg-[#f0eaf4] p-4 md:hidden" aria-label="In this article">
+        <strong className="text-sm">In this article</strong>
+        <ol className="mb-0 mt-2 list-decimal space-y-1.5 pl-4 text-sm leading-relaxed text-brand-purple">{sections.map(({ id, title }) => <li key={id}><a className="hover:underline" href={`#${id}`}>{title}</a></li>)}</ol>
+      </nav>}
+
       <div className="mx-auto grid max-w-7xl items-start gap-8 md:grid-cols-3 grid-cols-1">
         <div className="col-span-2 min-w-0">
           <RichContent value={article.body} className="blog-article-content text-base leading-[1.8] text-brand-muted [&_h2]:scroll-mt-28 [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:border-b [&_h2]:border-brand-line [&_h2]:pb-2 [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-bold [&_p]:mb-3.5" headingIds={sections.map(({ id }) => id)} />
@@ -354,7 +363,7 @@ export function BlogArticlePage({ slug, initialArticle }: { slug: string; initia
         </div>
 
         <aside className="grid w-fit gap-3 top-10 sticky print:hidden">
-          {sections.length > 0 && <nav className="rounded border border-brand-line bg-[#f0eaf4] p-3" aria-label="In this article">
+          {sections.length > 0 && <nav className="hidden rounded border border-brand-line bg-[#f0eaf4] p-3 md:block" aria-label="In this article">
             <strong className="text-sm">In this article</strong>
             <ol className="mb-0 mt-2 list-decimal space-y-1.5 pl-4 text-xs leading-relaxed text-brand-purple">{sections.map(({ id, title }) => <li key={id}><a className="hover:underline" href={`#${id}`}>{title}</a></li>)}</ol>
           </nav>}

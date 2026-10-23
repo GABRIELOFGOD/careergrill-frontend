@@ -3,6 +3,7 @@ import RichContent from "@/components/rich-content";
 import JobDetailPreview from "@/components/job-detail/job-detail-preview";
 import ScholarshipDetailView from "@/components/scholarship-detail/scholarship-detail-view";
 import { readResourceSchema } from "@/lib/resource-tools";
+import { articleReadTimeMinutes } from "@/lib/blog-content";
 
 const labels: Partial<Record<ContentType, string>> = {
   job: "Job opportunity",
@@ -16,7 +17,7 @@ const labels: Partial<Record<ContentType, string>> = {
 const metadataFields: Partial<Record<ContentType, [string, string][]>> = {
   job: [["employer", "Employer"], ["location", "Location"], ["experience_level", "Experience"], ["work_arrangement", "Work arrangement"], ["employment_type", "Employment type"], ["closing_date", "Closing date"], ["salary", "Salary"]],
   scholarship: [["provider", "Provider"], ["study_level", "Study level"], ["destination", "Destination"], ["award_coverage", "Award coverage"], ["deadline", "Deadline"], ["funding_type", "Funding type"], ["cycle_label", "Application cycle"]],
-  article: [["author", "Written by"], ["reading_minutes", "Reading time"]],
+  article: [["author", "Written by"]],
   resource: [["format", "Format"]],
   testimonial: [["author", "Client"], ["attribution", "Feedback context"]],
 };
@@ -44,6 +45,7 @@ export default function ContentPreview({ type, title, excerpt, body, category, d
   const fields = (metadataFields[type] ?? [])
     .map(([key, label]) => [label, data[key]] as const)
     .filter((field): field is readonly [string, string] => Boolean(field[1]?.trim()));
+  if (type === "article") fields.push(["Reading time", `${articleReadTimeMinutes(body)} min read`]);
 
   return <div className="overflow-hidden rounded-lg border border-brand-line bg-white shadow-sm">
     <div className="flex h-11 items-center gap-2 border-b border-brand-line bg-brand-blue px-4">

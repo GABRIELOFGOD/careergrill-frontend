@@ -3,6 +3,15 @@ export interface ArticleSection {
   id: string;
 }
 
+export function articleReadTimeMinutes(body: string): number {
+  const text = body
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&(?:nbsp|amp|lt|gt|quot|#39);/gi, " ");
+  const words = text.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
+  return Math.max(1, Math.ceil(words / 200));
+}
+
 export function articleSections(body: string): ArticleSection[] {
   const htmlHeadings = [...body.matchAll(/<h2\b([^>]*)>([\s\S]*?)<\/h2>/gi)]
     .map((match) => ({

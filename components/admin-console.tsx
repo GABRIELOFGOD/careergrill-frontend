@@ -128,7 +128,6 @@ const fieldsByType: Partial<Record<ContentType, { key: string; label: string }[]
   ],
   article: [
     { key: "author", label: "Author" },
-    { key: "reading_minutes", label: "Reading time (minutes)" },
     { key: "featured", label: "Feature as the lead blog article" },
     { key: "cover_theme", label: "Article cover colour theme" },
     { key: "cover_label", label: "Article cover topic label" },
