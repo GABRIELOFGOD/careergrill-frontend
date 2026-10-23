@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { jsonLdScript, siteUrl } from "@/lib/seo";
 import "./globals.css";
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://careergrill.com"),
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-screen text-base leading-relaxed antialiased">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationData }} />
         {children}
+        <Analytics />
       </body>
     </html>
   );
