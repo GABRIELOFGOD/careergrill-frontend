@@ -1,9 +1,20 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ContentDetail } from "@/components/public-site";
+import { contentMetadata, getPublishedContent } from "@/lib/seo";
+
+export const instant = false;
 
 async function ResourceContent({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   return <ContentDetail slug={slug} expectedType="resource" />;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const item = await getPublishedContent(slug);
+  if (!item || item.type !== "resource") return { title: "Resource not found", robots: { index: false, follow: false } };
+  return contentMetadata(item, `/resources/${encodeURIComponent(item.slug)}`);
 }
 
 export default function ResourceDetailPage({ params }: { params: Promise<{ slug: string }> }) {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/api";
 import RichContent from "@/components/rich-content";
@@ -10,6 +11,7 @@ import { articleSections } from "@/lib/blog-content";
 import { type SiteContent } from "@/lib/site-data";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { contentHref } from "@/lib/site-data";
 
 function articleText(item: SiteContent): string {
   return [item.title, item.category, item.excerpt, item.body, ...item.tags].join(" ").toLowerCase();
@@ -34,6 +36,23 @@ function articleReadTime(item: SiteContent): string {
 }
 
 function BlogArtwork({ item, featured = false }: { item: SiteContent; featured?: boolean }) {
+  const image = textValue(item.data.seo_image, "");
+  if (image) {
+    return (
+      <div className={cn("relative min-h-36 overflow-hidden bg-brand-sage", featured && "h-full min-h-[19.375rem]")}>
+        <Image
+          src={image}
+          alt={item.title}
+          width={1200}
+          height={630}
+          unoptimized
+          sizes={featured ? "(max-width: 1024px) 100vw, 50vw" : "(max-width: 640px) 100vw, 33vw"}
+          className="absolute inset-0 size-full object-cover"
+        />
+      </div>
+    );
+  }
+
   const theme = textValue(item.data.cover_theme, item.category.toLowerCase().replace(/\s+/g, "-"));
   const artworkTheme = {
     graduate: "bg-[#ded4eb] text-[#826997]",
@@ -64,6 +83,8 @@ function BlogArtwork({ item, featured = false }: { item: SiteContent; featured?:
 }
 
 export function BlogIndexPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [articles, setArticles] = useState<SiteContent[]>([]);
   const [query, setQuery] = useState("");
   const [topic, setTopic] = useState("All articles");
@@ -86,8 +107,29 @@ export function BlogIndexPage() {
     return matchesTopic && (!query.trim() || articleText(item).includes(query.trim().toLowerCase()));
   }), [articles, query, topic]);
 
-  const featured = visibleArticles.find((item) => item.data.featured === true) ?? visibleArticles[0];
-  const listArticles = visibleArticles.filter((item) => item.id !== featured?.id);
+  const articlesPerPage = 10;
+  const requestedPage = Number(searchParams.get("page") ?? "1");
+  const totalPages = Math.max(1, Math.ceil(visibleArticles.length / articlesPerPage));
+  const currentPage = Number.isInteger(requestedPage) && requestedPage > 0
+    ? Math.min(requestedPage, totalPages)
+    : 1;
+  const pageArticles = visibleArticles.slice((currentPage - 1) * articlesPerPage, currentPage * articlesPerPage);
+  const featured = currentPage === 1
+    ? pageArticles.find((item) => item.data.featured === true) ?? pageArticles[0]
+    : undefined;
+  const listArticles = pageArticles.filter((item) => item.id !== featured?.id);
+
+  function pageHref(page: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (page === 1) params.delete("page");
+    else params.set("page", String(page));
+    const queryString = params.toString();
+    return queryString ? `/blog?${queryString}` : "/blog";
+  }
+
+  function resetPagination() {
+    if (searchParams.has("page")) router.replace("/blog", { scroll: false });
+  }
 
   return (
     <div className="flex flex-col gap-10">
@@ -115,12 +157,12 @@ export function BlogIndexPage() {
             <div className="flex flex-col gap-3 items-start p-8">
               <Eyebrow>Featured reading</Eyebrow>
               <div className="flex items-center gap-3 text-xs text-brand-purple"><span className="font-bold">{featured.category}</span><span>{articleReadTime(featured)}</span></div>
-              <h2 className="mb-3 mt-3 text-4xl leading-snug"><Link href={`/blog/${encodeURIComponent(featured.slug)}`}>{featured.title}</Link></h2>
+              <h2 className="mb-3 mt-3 text-4xl leading-snug"><Link href={contentHref("article", featured.slug)}>{featured.title}</Link></h2>
               <p className="mb-3 text-sm leading-relaxed text-brand-muted">{featured.excerpt}</p>
-              <Link className={buttonVariants({ variant: "brand", size: "sm", className: "mt-auto" })} href={`/blog/${encodeURIComponent(featured.slug)}`}>Read the article <span aria-hidden="true">↗</span></Link>
+              <Link className={buttonVariants({ variant: "brand", size: "sm", className: "mt-auto" })} href={contentHref("article", featured.slug)}>Read the article <span aria-hidden="true">↗</span></Link>
               <small className="mt-3 text-xs text-brand-purple">By {textValue(featured.data.author, "Careergrill")}</small>
             </div>
-            <Link className="block min-w-0" href={`/blog/${encodeURIComponent(featured.slug)}`} aria-label={`Read ${featured.title}`}>
+            <Link className="block min-w-0" href={contentHref("article", featured.slug)} aria-label={`Read ${featured.title}`}>
               <BlogArtwork item={featured} featured />
             </Link>
           </article>
@@ -133,15 +175,15 @@ export function BlogIndexPage() {
         </div>
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-5">
           <label className="sr-only" htmlFor="blog-search">Search article titles, topics or advice</label>
-          <input className="min-h-11 rounded border border-brand-line bg-white px-3 py-2 text-sm" id="blog-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles, topics or advice in an article" />
-          {(query || topic !== "All articles") && <button type="button" className="text-sm font-semibold text-brand-purple underline" onClick={() => { setQuery(""); setTopic("All articles"); }}>Reset</button>}
+          <input className="min-h-11 rounded border border-brand-line bg-white px-3 py-2 text-sm" id="blog-search" type="search" value={query} onChange={(event) => { resetPagination(); setQuery(event.target.value); }} placeholder="Search titles, topics or advice in an article" />
+          {(query || topic !== "All articles") && <button type="button" className="text-sm font-semibold text-brand-purple underline" onClick={() => { resetPagination(); setQuery(""); setTopic("All articles"); }}>Reset</button>}
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Filter articles by topic">
           {topics.map((item) => (
-            <button type="button" key={item} className="rounded-full border border-brand-line bg-white px-3 py-1.5 text-xs text-brand-ink aria-pressed:border-brand-ink aria-pressed:bg-brand-ink aria-pressed:text-white" aria-pressed={topic === item} onClick={() => setTopic(item)}>{item}</button>
+            <button type="button" key={item} className="rounded-full border border-brand-line bg-white px-3 py-1.5 text-xs text-brand-ink aria-pressed:border-brand-ink aria-pressed:bg-brand-ink aria-pressed:text-white" aria-pressed={topic === item} onClick={() => { resetPagination(); setTopic(item); }}>{item}</button>
           ))}
         </div>
-        <p className="my-3 text-xs text-brand-purple">{visibleArticles.length} {visibleArticles.length === 1 ? "article" : "articles"}{featured ? " · 1 featured above" : ""}</p>
+        <p className="my-3 text-xs text-brand-purple">{visibleArticles.length} {visibleArticles.length === 1 ? "article" : "articles"}{featured ? " · 1 featured above" : ""} · Page {currentPage} of {totalPages}</p>
         {listArticles.length ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {listArticles.map((item) => <BlogCard item={item} key={item.id} />)}
@@ -149,6 +191,16 @@ export function BlogIndexPage() {
         ) : (
           <p className="border border-brand-line bg-white p-5 text-sm text-brand-muted">No articles match that search. Try another topic or reset your filters.</p>
         )}
+        {totalPages > 1 && <nav className="mt-6 flex items-center justify-center gap-2" aria-label="Blog pages">
+          {currentPage > 1 && <Link className="rounded border border-brand-line bg-white px-3 py-2 text-sm font-semibold text-brand-purple hover:bg-brand-blue" href={pageHref(currentPage - 1)}>Previous</Link>}
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => <Link
+            key={page}
+            className={`rounded border px-3 py-2 text-sm font-semibold ${page === currentPage ? "border-brand-ink bg-brand-ink text-white" : "border-brand-line bg-white text-brand-purple hover:bg-brand-blue"}`}
+            href={pageHref(page)}
+            aria-current={page === currentPage ? "page" : undefined}
+          >{page}</Link>)}
+          {currentPage < totalPages && <Link className="rounded border border-brand-line bg-white px-3 py-2 text-sm font-semibold text-brand-purple hover:bg-brand-blue" href={pageHref(currentPage + 1)}>Next</Link>}
+        </nav>}
         <aside className="mt-7 flex items-center justify-between gap-5 rounded bg-brand-sage px-8 py-6 max-md:flex-col max-md:items-start">
           <div className="flex flex-col gap-3"><h2 className="mb-1 text-2xl font-extrabold">Have a draft and a deadline?</h2><p className="mb-0 max-w-xl text-base text-brand-muted">Share your application question, documents and the feedback you need. Ask what the review includes, the fee and delivery date.</p></div>
           <Link className={buttonVariants({ variant: "brand", size: "sm" })} href="/consultation">Discuss a review</Link>
@@ -161,22 +213,22 @@ export function BlogIndexPage() {
 function BlogCard({ item }: { item: SiteContent }) {
   return (
     <article className="flex min-w-0 flex-col overflow-hidden rounded-md border border-brand-line bg-white">
-      <Link className="block" href={`/blog/${encodeURIComponent(item.slug)}`} aria-label={`Read ${item.title}`}><BlogArtwork item={item} /></Link>
+      <Link className="block" href={contentHref("article", item.slug)} aria-label={`Read ${item.title}`}><BlogArtwork item={item} /></Link>
       <div className="flex min-h-48 flex-1 flex-col gap-3 items-start p-6">
         <div className="flex items-center gap-2 text-xs text-brand-purple"><span>{item.category}</span><span>{articleReadTime(item)}</span></div>
-        <h3 className="mb-2 mt-2 font-display text-xl font-extrabold leading-snug"><Link className="hover:text-brand-orange-dark" href={`/blog/${encodeURIComponent(item.slug)}`}>{item.title}</Link></h3>
+        <h3 className="mb-2 mt-2 font-display text-xl font-extrabold leading-snug"><Link className="hover:text-brand-orange-dark" href={contentHref("article", item.slug)}>{item.title}</Link></h3>
         <p className="mb-3 text-sm leading-relaxed text-brand-muted">{item.excerpt}</p>
-        <div className="mt-auto flex w-full justify-between gap-2 border-t border-[#eee9f0] pt-4 text-xs text-brand-purple"><Link className="font-bold text-brand-ink underline hover:text-brand-orange-dark underline-offset-2" href={`/blog/${encodeURIComponent(item.slug)}`}>Read article</Link><span>{textValue(item.data.author, "Careergrill")}</span></div>
+        <div className="mt-auto flex w-full justify-between gap-2 border-t border-[#eee9f0] pt-4 text-xs text-brand-purple"><Link className="font-bold text-brand-ink underline hover:text-brand-orange-dark underline-offset-2" href={contentHref("article", item.slug)}>Read article</Link><span>{textValue(item.data.author, "Careergrill")}</span></div>
       </div>
     </article>
   );
 }
 
-export function BlogArticlePage({ slug }: { slug: string }) {
-  const [article, setArticle] = useState<SiteContent | null>(null);
+export function BlogArticlePage({ slug, initialArticle }: { slug: string; initialArticle?: SiteContent }) {
+  const [article, setArticle] = useState<SiteContent | null>(initialArticle ?? null);
   const [relatedResources, setRelatedResources] = useState<SiteContent[]>([]);
   const [relatedError, setRelatedError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialArticle);
   const [message, setMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const sections = article ? articleSections(article.body) : [];
@@ -190,29 +242,27 @@ export function BlogArticlePage({ slug }: { slug: string }) {
 
   useEffect(() => {
     let active = true;
-    setArticle(null);
-    setLoading(true);
-    setLoadError("");
-    setRelatedResources([]);
-    setRelatedError("");
-    void apiRequest<{ item: SiteContent }>(`/content/${encodeURIComponent(slug)}`)
-      .then(({ item }) => {
-        if (!active) return;
-        if (item.type !== "article") {
-          setArticle(null);
-          setLoadError("This page is not a blog article.");
-          return;
-        }
-        setArticle(item);
-        setLoadError("");
-      })
-      .catch((error: unknown) => { if (active) setLoadError(error instanceof Error ? error.message : "The article could not be loaded."); })
-      .finally(() => { if (active) setLoading(false); });
+    const hasServerArticle = initialArticle?.slug === slug && initialArticle.type === "article";
+    if (!hasServerArticle) {
+      void apiRequest<{ item: SiteContent }>(`/content/${encodeURIComponent(slug)}`)
+        .then(({ item }) => {
+          if (!active) return;
+          if (item.type !== "article") {
+            setArticle(null);
+            setLoadError("This page is not a blog article.");
+            return;
+          }
+          setArticle(item);
+          setLoadError("");
+        })
+        .catch((error: unknown) => { if (active) setLoadError(error instanceof Error ? error.message : "The article could not be loaded."); })
+        .finally(() => { if (active) setLoading(false); });
+    }
     void apiRequest<{ items: SiteContent[] }>("/content?type=resource")
       .then(({ items }) => { if (active) setRelatedResources(items); })
       .catch((error: unknown) => { if (active) setRelatedError(error instanceof Error ? error.message : "Related resources could not be loaded."); });
     return () => { active = false; };
-  }, [slug]);
+  }, [slug, initialArticle]);
 
   async function copyArticleLink() {
     try {

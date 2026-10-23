@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiRequest, apiUrl } from "@/lib/api";
 import type { ResourceAttachment, ResourceInput } from "@/lib/resource-tools";
 import { readResourceSchema } from "@/lib/resource-tools";
+import { contentHref } from "@/lib/site-data";
 import type { SiteContent } from "@/lib/site-data";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Eyebrow } from "@/components/site-shell";
@@ -186,7 +187,7 @@ export default function ResourceToolDetail({ item }: { item: SiteContent }) {
         {relatedArticle && <div className="resource-tool-related-article border border-gray-200 rounded-md bg-white grid gap-3 p-4">
           <span className="text-xs uppercase font-semibold">Read the guide</span>
           <strong className="text-xl font-bold leading-tight tracking-tighter">{relatedArticle.title}</strong>
-          <Link className="resource-tool-card-link underline hover:text-brand-orange-dark text-sm font-semibold text-brand-ink" href={`/blog/${encodeURIComponent(relatedArticle.slug)}`}>Read the article</Link>
+          <Link className="resource-tool-card-link underline hover:text-brand-orange-dark text-sm font-semibold text-brand-ink" href={contentHref("article", relatedArticle.slug)}>Read the article</Link>
         </div>}
         {relatedArticleError && <p className="rounded border border-red-300 bg-red-50 p-3 text-xs text-red-800" role="alert">Related article could not be loaded: {relatedArticleError}</p>}
         <section className="resource-tool-consultation grid gap-3 p-4 bg-brand-footer-hover/20 rounded-md">

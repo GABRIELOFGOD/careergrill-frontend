@@ -5,7 +5,7 @@ Next.js frontend for the Careergrill public website and content-management dashb
 ## Structure
 
 - `app/(site)/`: public website route group. The group layout owns the public header, sign-in strip, footer, and shared site frame; the group name does not appear in URLs.
-- Public content uses type-specific detail routes: `/job/{slug}`, `/scholarship/{slug}`, `/blog/{slug}`, `/resources/{slug}`, `/services/{slug}`, and `/client-feedback/{slug}`. FAQs are listed on `/faq` without individual slug pages.
+- Public content uses type-specific detail routes: `/job/{slug}`, `/scholarship/{slug}`, `/{blog_slug}`, `/resources/{slug}`, `/services/{slug}`, and `/client-feedback/{slug}`. The blog index is paginated at `/blog`; `/blog/{slug}` permanently redirects to `/{slug}`. Blog slugs matching fixed website paths are rejected. FAQs are listed on `/faq` without individual slug pages.
 - `app/dashboard/`: private dashboard pages. Its shared layout keeps the authenticated content studio mounted while navigating between `/dashboard/jobs`, `/dashboard/scholarships`, `/dashboard/blog`, `/dashboard/resources`, `/dashboard/services`, `/dashboard/faqs`, `/dashboard/feedback`, overview, AI studio, files, and settings.
 - Service fees are editable in Dashboard → Settings → Service pricing and load from the public pricing API on the services page. The UI does not show hard-coded prices when the backend has no configured rates.
 - Homepage and services-page business copy, along with package descriptions, inclusions, delivery/payment terms, and cancellation details, load from backend public configuration. If that configuration cannot be loaded, those sections report an error instead of falling back to hard-coded copy.
@@ -13,6 +13,8 @@ Next.js frontend for the Careergrill public website and content-management dashb
 - `/faq` presents published answers from the backend FAQ collection; administrators manage them with a title and rich-text editor in the dedicated FAQ dashboard. `/privacy` explains account storage, AI feedback, temporary drafts, enquiries, and data removal.
 - Dashboard pages require an authenticated account with the `admin` role. The API enforces authorization independently on every admin endpoint; frontend checks are for access flow and user feedback, not the security boundary.
 - `app/layout.tsx`: root document, fonts, global styles, and metadata.
+- `lib/seo.ts`, `app/sitemap.ts`, and `app/robots.ts`: shared metadata, canonical URLs, social cards, structured data helpers, and public-content sitemap/robots rules. Set `NEXT_PUBLIC_SITE_URL` to the production origin when it differs from `https://careergrill.com`.
+- The content editor's “Search and social sharing” section accepts per-item SEO titles and descriptions and an uploaded OG image; otherwise, metadata uses the item title/introduction and the branded site-wide OG image.
 - `components/site-shell.tsx`: public header/footer and shared site chrome.
 - `components/job-detail/`: focused job-page header, facts, application, eligibility, preparation, source, and preview components. The location/eligibility callout and application instructions are editable from the dashboard.
 - `components/scholarship-detail/`: shared scholarship detail layout used by the public route and the CMS reader preview, with editable funding, eligibility, and provider-record details.

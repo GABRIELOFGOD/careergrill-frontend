@@ -1,5 +1,17 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ContentDetail } from "@/components/public-site";
+import { contentMetadata, getPublishedContent } from "@/lib/seo";
+import { contentHref } from "@/lib/site-data";
+
+export const instant = false;
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const item = await getPublishedContent(slug);
+  if (!item) return { title: "Page not found", robots: { index: false, follow: false } };
+  return contentMetadata(item, contentHref(item.type, item.slug));
+}
 
 async function ContentPageBody({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

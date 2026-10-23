@@ -1,9 +1,20 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ContentDetail } from "@/components/public-site";
+import { contentMetadata, getPublishedContent } from "@/lib/seo";
+
+export const instant = false;
 
 async function FeedbackContent({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   return <ContentDetail slug={slug} expectedType="testimonial" />;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const item = await getPublishedContent(slug);
+  if (!item || item.type !== "testimonial") return { title: "Feedback not found", robots: { index: false, follow: false } };
+  return contentMetadata(item, `/client-feedback/${encodeURIComponent(item.slug)}`);
 }
 
 export default function FeedbackDetailPage({ params }: { params: Promise<{ slug: string }> }) {

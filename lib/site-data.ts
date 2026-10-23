@@ -3,7 +3,7 @@ export type ContentType = "job" | "scholarship" | "article" | "resource" | "serv
 const contentCollectionPaths: Record<ContentType, string> = {
   job: "/job",
   scholarship: "/scholarship",
-  article: "/blog",
+  article: "",
   resource: "/resources",
   service: "/services",
   testimonial: "/client-feedback",
