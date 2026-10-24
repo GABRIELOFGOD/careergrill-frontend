@@ -77,6 +77,7 @@ const multiSelectOptions: Record<string, string[]> = {
     "Mathematics & Statistics",
     "Religion & Islamic Studies",
     "Not yet confirmed",
+    "Other",
   ],
   eligible_countries: [...countryNames, "Not yet confirmed"],
 };
@@ -118,7 +119,16 @@ function MultiSelectField({
   const dropdownRef = useRef<HTMLDetailsElement>(null);
   const selected = readSelectedOptions(value);
   const isCountryField = fieldKey === "destination" || fieldKey === "eligible_countries";
-  const availableOptions = [...new Set([...options, ...selected])];
+  const isSubjectField = fieldKey === "subject_areas";
+  const customSubjects = isSubjectField
+    ? selected.filter((option) => option !== "Other" && !options.includes(option))
+    : [];
+  const hasOtherSubject = isSubjectField && (selected.includes("Other") || customSubjects.length > 0);
+  const otherSubjectValue = customSubjects.join(", ");
+  const availableOptions = [...new Set([
+    ...options,
+    ...selected.filter((option) => !isSubjectField || options.includes(option)),
+  ])];
   const visibleOptions = availableOptions.filter((option) =>
     option.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
 
@@ -133,10 +143,23 @@ function MultiSelectField({
   }, []);
 
   function updateSelection(option: string, checked: boolean) {
-    const next = checked
-      ? [...selected, option]
-      : selected.filter((item) => item !== option);
+    const next = isSubjectField && option === "Other"
+      ? checked
+        ? [...selected.filter((item) => item !== "Other"), "Other"]
+        : selected.filter((item) => item !== "Other" && !customSubjects.includes(item))
+      : checked
+        ? [...selected, option]
+        : selected.filter((item) => item !== option);
     onChange(fieldKey, JSON.stringify(next));
+  }
+
+  function updateOtherSubject(value: string) {
+    const knownSubjects = selected.filter((item) => item !== "Other" && !customSubjects.includes(item));
+    onChange(fieldKey, JSON.stringify([
+      ...knownSubjects,
+      "Other",
+      ...(value.trim() ? [value.trim()] : []),
+    ]));
   }
 
   function updateCountries(countryList: string[], checked: boolean) {
@@ -161,12 +184,15 @@ function MultiSelectField({
   const selectedCountryLabels = selected.includes("All nationalities") || selectedCountries.length === countryNames.length
     ? ["All countries"]
     : [...selectedContinentNames, ...remainingSelectedCountries];
+  const displayedSelections = isSubjectField && otherSubjectValue
+    ? selected.filter((option) => option !== "Other")
+    : selected;
   const selectionSummary = isCountryField
     ? [
       ...selectedCountryLabels.slice(0, 3),
       ...(selectedCountryLabels.length > 3 ? [`+${selectedCountryLabels.length - 3} more`] : []),
     ].join(", ")
-    : `${selected.length} selected`;
+    : `${isSubjectField ? displayedSelections.length : selected.length} selected`;
 
   return (
     <div className="grid min-w-0 gap-2 text-sm font-semibold text-brand-ink">
@@ -190,13 +216,13 @@ function MultiSelectField({
           {isCountryField && <div className="mb-2 border-b border-brand-line pb-2">
             <button
               aria-pressed={selected.includes("All nationalities") || selectedCountries.length === countryNames.length}
-              className="!flex !min-h-9 !w-full !items-center !gap-2 rounded px-2 py-1.5 text-left text-sm font-semibold text-brand-purple hover:bg-brand-blue"
+              className="!flex! min-h-9! w-full! items-center! gap-2! rounded px-2 py-1.5 text-left text-sm font-semibold text-brand-purple hover:bg-brand-blue"
               type="button"
               onClick={() => updateCountries(countryNames, selectedCountries.length !== countryNames.length)}
             >
               <input
                 checked={selected.includes("All nationalities") || selectedCountries.length === countryNames.length}
-                className="!m-0 !size-4 !min-h-0 !w-4 shrink-0 accent-brand-purple"
+                className="m-0! size-4! min-h-0! w-4! shrink-0 accent-brand-purple"
                 type="checkbox"
                 readOnly
                 tabIndex={-1}
@@ -211,14 +237,14 @@ function MultiSelectField({
                 return (
                   <button
                     aria-pressed={checked}
-                    className="!flex !min-h-9 !items-center !gap-2 rounded px-2 py-1.5 text-left text-xs font-medium hover:bg-brand-blue"
+                    className="!flex! min-h-9! items-center! gap-2! rounded px-2 py-1.5! text-left! text-xs! font-medium! hover:bg-brand-blue"
                     key={continent}
                     type="button"
                     onClick={() => updateCountries(continentCountries, !checked)}
                   >
                     <input
                       checked={checked}
-                      className="!m-0 !size-4 !min-h-0 !w-4 shrink-0 accent-brand-purple"
+                      className="m-0! size-4! min-h-0! w-4! shrink-0 accent-brand-purple"
                       type="checkbox"
                       readOnly
                       tabIndex={-1}
@@ -233,10 +259,10 @@ function MultiSelectField({
             </div>
           </div>}
           {visibleOptions.map((option) => (
-            <label className="!flex cursor-pointer !items-center !gap-2 rounded px-2 py-1.5 text-sm font-normal hover:bg-brand-blue" key={option}>
+            <label className="flex! cursor-pointer items-center! gap-2! rounded px-2 py-1.5 text-sm font-normal hover:bg-brand-blue" key={option}>
               <input
                 checked={selected.includes(option)}
-                className="!m-0 !size-4 !min-h-0 !w-4 shrink-0 accent-brand-purple"
+                className="m-0! size-4! min-h-0! w-4! shrink-0 accent-brand-purple"
                 type="checkbox"
                 onChange={(event) => updateSelection(option, event.target.checked)}
               />
@@ -246,7 +272,16 @@ function MultiSelectField({
           {!visibleOptions.length && <p className="mb-0 px-2 py-2 text-xs text-brand-muted">No matching options.</p>}
         </div>
       </details>
-      {selected.length > 0 ? (
+      {hasOtherSubject && <label className="grid gap-1.5 text-sm font-medium text-brand-ink">
+        Add a course or subject area
+        <input
+          className="min-h-10 rounded border border-brand-line bg-white px-3 py-2 text-sm font-normal"
+          value={otherSubjectValue}
+          onChange={(event) => updateOtherSubject(event.target.value)}
+          placeholder="Type the course or subject area"
+        />
+      </label>}
+      {displayedSelections.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
           {(isCountryField
             ? [
@@ -254,7 +289,7 @@ function MultiSelectField({
               ...(selectedCountryLabels.length > 3 ? [`+${selectedCountryLabels.length - 3} more`] : []),
               ...selected.filter((item) => !countryNames.includes(item) && item !== "All nationalities"),
             ]
-            : selected
+            : displayedSelections
           ).map((option) => (
             <span className="inline-flex max-w-full items-center gap-1 rounded border border-brand-line bg-brand-blue px-2 py-1 text-xs font-medium text-brand-purple" key={option}>
               <span className="truncate">{option}</span>

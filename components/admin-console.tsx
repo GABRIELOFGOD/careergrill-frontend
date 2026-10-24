@@ -158,7 +158,8 @@ function serializedContentData(data: Record<string, string>): Record<string, unk
       try {
         const parsed: unknown = JSON.parse(value);
         if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
-          return parsed.length ? [[key, parsed]] : [];
+          const selected = key === "subject_areas" ? parsed.filter((item) => item !== "Other") : parsed;
+          return selected.length ? [[key, selected]] : [];
         }
       } catch {
         return [[key, [value]]];
@@ -169,15 +170,17 @@ function serializedContentData(data: Record<string, string>): Record<string, unk
   }));
 }
 
-function selectedFieldValues(value: string | undefined): string[] {
+function selectedFieldValues(value: string | undefined, key?: string): string[] {
   if (!value) return [];
   try {
     const parsed: unknown = JSON.parse(value);
-    if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) return parsed;
+    if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
+      return key === "subject_areas" ? parsed.filter((item) => item !== "Other") : parsed;
+    }
   } catch {
-    return [value];
+    return key === "subject_areas" && value === "Other" ? [] : [value];
   }
-  return [value];
+  return key === "subject_areas" && value === "Other" ? [] : [value];
 }
 
 function isHttpUrl(value: string): boolean {
@@ -512,7 +515,7 @@ export default function AdminConsole() {
     }
     if (draft.type === "scholarship" && status === "published") {
       const requiredFilters = ["study_level", "destination", "funding_type", "subject_areas", "eligible_countries"];
-      const missingFilters = requiredFilters.filter((key) => selectedFieldValues(draft.data[key]).length === 0);
+      const missingFilters = requiredFilters.filter((key) => selectedFieldValues(draft.data[key], key).length === 0);
       const deadlineType = draft.data.deadline_type;
       const hasDeadline = deadlineType === "rolling"
         || deadlineType === "unknown"
@@ -1001,7 +1004,6 @@ export default function AdminConsole() {
                   resourceId={editingId}
                 />}
                 <label>Content</label><RichTextEditor value={draft.body} onChange={(body) => setDraft((current) => ({ ...current, body }))} onError={setNotice} />
-                {draft.type !== "article" && <div className="grid gap-3 sm:grid-cols-2"><label>Official source URL<input type="url" value={draft.source_url} onChange={(event) => setDraft({ ...draft, source_url: event.target.value })} placeholder="https://" /></label><label>Expiry date<input type="date" value={draft.expires_at} onChange={(event) => setDraft({ ...draft, expires_at: event.target.value })} /></label></div>}
               </>}
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-line pt-4"><span className="text-xs text-brand-muted">{editingId ? "Preview your edits before updating this item." : "Preview before publishing to check how this appears to readers."}</span><div className="flex gap-2"><button type="button" className={buttonVariants({ variant: "outline", size: "sm" })} onClick={() => { editingContentId.current = ""; setEditingId(""); setIsEditingPublished(false); setContentPreview(false); setResourceAttachments([]); setResourceFiles([]); setDraft({ ...emptyDraft, type: contentType ?? "article" }); }}>Clear</button><button className={buttonVariants({ variant: "brand", size: "sm" })} disabled={busy}>{busy ? "Saving…" : editingId || ["job", "scholarship"].includes(contentType ?? draft.type) ? "Preview before saving" : "Save draft"}</button></div></div>
               </>}
@@ -1031,7 +1033,7 @@ export default function AdminConsole() {
                   { label: "Study level", values: selectedFieldValues(draft.data.study_level) },
                   { label: "Destination", values: selectedFieldValues(draft.data.destination) },
                   { label: "Funding", values: selectedFieldValues(draft.data.funding_type) },
-                  { label: "Subjects", values: selectedFieldValues(draft.data.subject_areas) },
+                  { label: "Subjects", values: selectedFieldValues(draft.data.subject_areas, "subject_areas") },
                   { label: "Applicant countries", values: selectedFieldValues(draft.data.eligible_countries) },
                 ].map(({ label, values }) => <div className="border-t border-brand-line pt-2" key={label}><dt className="text-xs text-brand-muted">{label}</dt><dd className="mb-0 mt-1 text-sm font-semibold">{values.length ? (label === "Destination" || label === "Applicant countries" ? summarizeCountrySelection(values) : values.join(", ")) : "Not selected"}</dd></div>)}
               </dl>

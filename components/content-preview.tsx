@@ -33,14 +33,15 @@ function displayValue(value: string | undefined, key: string): string {
   try {
     const parsed: unknown = JSON.parse(value);
     if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
+      const values = key === "subject_areas" ? parsed.filter((item) => item !== "Other") : parsed;
       return key === "destination" || key === "eligible_countries"
-        ? summarizeCountrySelection(parsed)
-        : parsed.join(", ");
+        ? summarizeCountrySelection(values)
+        : values.join(", ");
     }
   } catch {
     return key === "destination" || key === "eligible_countries"
       ? summarizeCountrySelection(value)
-      : value;
+      : key === "subject_areas" && value === "Other" ? "" : value;
   }
   return key === "destination" || key === "eligible_countries"
     ? summarizeCountrySelection(value)
