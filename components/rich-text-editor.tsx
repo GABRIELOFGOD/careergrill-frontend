@@ -12,6 +12,7 @@ import Underline from "@tiptap/extension-underline";
 import { marked } from "marked";
 import { apiRequest, apiUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { richContentStyles } from "@/components/rich-content";
 
 const TextBox = Node.create({
   name: "textBox",
@@ -78,7 +79,7 @@ export default function RichTextEditor({ value, onChange, onError }: RichTextEdi
     content: editorHtml(value),
     editorProps: {
       attributes: {
-        class: "min-h-80 p-5 outline-none text-brand-ink leading-relaxed [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:font-display [&_h2]:text-2xl [&_h3]:mb-2 [&_h3]:mt-5 [&_h3]:font-display [&_h3]:text-xl [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:pl-1 [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-brand-orange [&_blockquote]:pl-4 [&_a]:text-brand-orange-dark [&_a]:underline [&_em]:italic [&_img]:my-5 [&_img]:h-auto [&_img]:max-w-full [&_table]:table-fixed [&_table]:w-full [&_table]:max-w-full [&_table]:border-collapse [&_th]:max-w-0 [&_th]:break-words [&_th]:[overflow-wrap:anywhere] [&_th]:border [&_th]:border-brand-line [&_th]:bg-brand-blue [&_th]:p-2 [&_td]:max-w-0 [&_td]:break-words [&_td]:[overflow-wrap:anywhere] [&_td]:border [&_td]:border-brand-line [&_td]:p-2 [&_[data-text-box]]:my-4 [&_[data-text-box]]:rounded [&_[data-text-box]]:border [&_[data-text-box]]:border-brand-line [&_[data-text-box]]:p-4",
+        class: cn("min-h-full p-5 outline-none text-brand-muted leading-relaxed", richContentStyles),
         "aria-label": "Content editor",
       },
     },
@@ -227,7 +228,9 @@ export default function RichTextEditor({ value, onChange, onError }: RichTextEdi
         }}
       />
     </div>
-    <EditorContent editor={editor} />
+    <div className="h-96 overflow-y-auto overscroll-contain">
+      <EditorContent editor={editor} />
+    </div>
     <div className="border-t border-brand-line bg-brand-cream px-3 py-2 text-xs leading-relaxed text-brand-muted">Select text to format. Set table size before inserting, add a colored text box, or upload PNG, JPEG, GIF and WebP images up to 10 MB.</div>
   </div>;
 }

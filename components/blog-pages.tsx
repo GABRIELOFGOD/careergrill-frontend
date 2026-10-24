@@ -36,9 +36,11 @@ function articleReadTime(item: SiteContent): string {
 
 function articleDate(item: SiteContent): string {
   const sourceDate = item.data.published_date;
-  const date = typeof sourceDate === "string"
-    ? new Date(`${sourceDate}T00:00:00Z`)
-    : item.published_at ? new Date(item.published_at) : null;
+  const date = item.published_at
+    ? new Date(item.published_at)
+    : typeof sourceDate === "string"
+      ? new Date(`${sourceDate}T00:00:00Z`)
+      : null;
   return date && !Number.isNaN(date.getTime())
     ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date)
     : "";
@@ -170,7 +172,7 @@ export function BlogIndexPage() {
           <article className="mb-8 grid gap-0 overflow-hidden rounded-lg border border-brand-line bg-white lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]">
             <div className="flex flex-col gap-3 items-start p-8">
               <Eyebrow>Featured reading</Eyebrow>
-              <div className="flex items-center gap-3 text-xs text-brand-purple"><span className="font-bold">{featured.category}</span><span>{articleReadTime(featured)}</span></div>
+              <div className="flex items-center gap-3 text-xs text-brand-purple"><span className="font-bold">{featured.category}</span><span>{articleReadTime(featured)}</span><span>{articleDate(featured)}</span></div>
               <h2 className="mb-3 mt-3 text-4xl leading-snug"><Link href={contentHref("article", featured.slug)}>{featured.title}</Link></h2>
               <p className="mb-3 text-sm leading-relaxed text-brand-muted">{featured.excerpt}</p>
               <Link className={buttonVariants({ variant: "brand", size: "sm", className: "mt-auto" })} href={contentHref("article", featured.slug)}>Read the article <span aria-hidden="true">↗</span></Link>
@@ -334,7 +336,7 @@ export function BlogArticlePage({ slug, initialArticle }: { slug: string; initia
         </nav>} */}
         <div className="inline-flex items-center gap-2 text-left">
           <span className="grid size-7 place-items-center rounded-full bg-brand-ink p-1"><Image src="/logo-icon.png" alt="" width={650} height={673} className="size-full object-contain" /></span>
-          <div className="grid gap-0.5"><strong className="text-sm">{textValue(article.data.author, "Careergrill")}</strong><small className="text-xs text-brand-muted">{articleReadTime(article)} · Application notes</small></div>
+          <div className="grid gap-0.5"><strong className="text-sm">{textValue(article.data.author, "Careergrill")}</strong><small className="text-xs text-brand-muted">{[articleDate(article), articleReadTime(article), "Application notes"].filter(Boolean).join(" · ")}</small></div>
         </div>
       </header>
 

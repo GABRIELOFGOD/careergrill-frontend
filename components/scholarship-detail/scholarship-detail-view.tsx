@@ -4,10 +4,31 @@ import { Eyebrow } from "@/components/site-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RichContent from "@/components/rich-content";
+import { summarizeCountrySelection } from "@/lib/countries";
 
 function field(item: SiteContent, key: string): string {
   const value = item.data[key];
-  return typeof value === "string" ? value.trim() : "";
+  if (Array.isArray(value) && value.every((entry): entry is string => typeof entry === "string")) {
+    return key === "destination" || key === "eligible_countries"
+      ? summarizeCountrySelection(value)
+      : value.join(", ");
+  }
+  if (typeof value !== "string") return "";
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (Array.isArray(parsed) && parsed.every((entry): entry is string => typeof entry === "string")) {
+      return key === "destination" || key === "eligible_countries"
+        ? summarizeCountrySelection(parsed)
+        : parsed.join(", ");
+    }
+  } catch {
+    return key === "destination" || key === "eligible_countries"
+      ? summarizeCountrySelection(value.trim())
+      : value.trim();
+  }
+  return key === "destination" || key === "eligible_countries"
+    ? summarizeCountrySelection(value.trim())
+    : value.trim();
 }
 
 function list(value: string): string[] {
@@ -88,6 +109,7 @@ export default function ScholarshipDetailView({
             <h2 className="mb-3 text-xl font-bold">What needs checking?</h2>
             <span className="mb-3 inline-flex rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-brand-purple">{field(item, "eligibility_status") || "Individual eligibility not assessed"}</span>
             {field(item, "subject_areas") && <p className="text-sm"><strong>Subject areas:</strong> {field(item, "subject_areas")}</p>}
+            {field(item, "eligible_countries") && <p className="text-sm"><strong>Eligible applicant countries:</strong> {field(item, "eligible_countries")}</p>}
             {field(item, "nationality_residence") && <p className="text-sm"><strong>Nationality and residence:</strong> {field(item, "nationality_residence")}</p>}
             {eligibilityPoints.length > 0 && <ul className="list-disc pl-5 text-sm [&>li+li]:mt-1">{eligibilityPoints.map((point, index) => <li key={`${index}-${point}`}>{point}</li>)}</ul>}
             {field(item, "eligibility_note") && <p className="mb-0 text-sm text-brand-muted">{field(item, "eligibility_note")}</p>}

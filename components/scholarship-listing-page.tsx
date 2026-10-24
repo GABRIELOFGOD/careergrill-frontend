@@ -5,18 +5,28 @@ import { useEffect, useMemo, useState } from "react";
 import { ApiError, apiRequest } from "@/lib/api";
 import type { SiteContent } from "@/lib/site-data";
 import { contentHref } from "@/lib/site-data";
+import { countryNames, summarizeCountrySelection } from "@/lib/countries";
 import { Eyebrow } from "@/components/site-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
 
 const filterFieldClassName = "grid gap-1.5 text-xs font-semibold text-brand-ink [&_select]:min-h-10 [&_select]:w-full [&_select]:rounded [&_select]:border [&_select]:border-brand-line [&_select]:bg-white [&_select]:px-3 [&_select]:py-2 [&_select]:text-sm [&_input]:min-h-11 [&_input]:w-full [&_input]:rounded [&_input]:border [&_input]:border-brand-line [&_input]:bg-white [&_input]:px-3 [&_input]:py-2 [&_input]:text-sm";
 
-function scholarshipValue(item: SiteContent, key: string, fallback = ""): string {
+function scholarshipValues(item: SiteContent, key: string): string[] {
   const value = item.data[key];
-  return typeof value === "string" ? value : fallback;
+  if (typeof value === "string") return value ? [value] : [];
+  return Array.isArray(value) && value.every((item): item is string => typeof item === "string")
+    ? value
+    : [];
+}
+
+function scholarshipValue(item: SiteContent, key: string, fallback = ""): string {
+  return scholarshipValues(item, key)[0] ?? fallback;
 }
 
 function options(items: SiteContent[], key: string): string[] {
-  return [...new Set(items.map((item) => scholarshipValue(item, key)).filter(Boolean))].sort();
+  const allDestinations = key === "destination" ? countryNames : [];
+  return [...new Set([...allDestinations, ...items.flatMap((item) => scholarshipValues(item, key))])]
+    .sort((a, b) => a.localeCompare(b));
 }
 
 export function ScholarshipListingPage() {
@@ -49,14 +59,16 @@ export function ScholarshipListingPage() {
         item.title,
         item.excerpt,
         item.body,
-        scholarshipValue(item, "provider"),
+        scholarshipValues(item, "provider").join(" "),
+        scholarshipValues(item, "subject_areas").join(" "),
+        scholarshipValues(item, "destination").join(" "),
         item.tags.join(" "),
       ].join(" ").toLowerCase();
       return (!searchTerm || searchable.includes(searchTerm))
-        && (!studyLevel || scholarshipValue(item, "study_level") === studyLevel)
-        && (!destination || scholarshipValue(item, "destination") === destination)
-        && (!fundingType || scholarshipValue(item, "funding_type") === fundingType)
-        && (!status || scholarshipValue(item, "application_status") === status);
+        && (!studyLevel || scholarshipValues(item, "study_level").includes(studyLevel))
+        && (!destination || scholarshipValues(item, "destination").includes(destination))
+        && (!fundingType || scholarshipValues(item, "funding_type").includes(fundingType))
+        && (!status || scholarshipValues(item, "application_status").includes(status));
     });
     if (sort === "title") result.sort((a, b) => a.title.localeCompare(b.title));
     if (sort === "deadline") {
@@ -218,7 +230,7 @@ export function ScholarshipListingPage() {
                     <span className={`rounded-full px-2 py-1 text-xs ${item.data.award_badge_tone === "orange" ? "bg-orange-100 text-orange-900" : "bg-brand-blue text-brand-purple"}`}>{scholarshipValue(item, "award_badge", "Funding details to verify")}</span>
                   </div>
                   <h3 className="mb-1 text-lg font-bold"><Link className="hover:text-brand-purple" href={contentHref("scholarship", item.slug)}>{item.title}</Link></h3>
-                  <p className="mb-2 text-sm text-brand-muted">{scholarshipValue(item, "destination")} · {scholarshipValue(item, "study_level")}</p>
+                  <p className="mb-2 text-sm text-brand-muted">{summarizeCountrySelection(scholarshipValues(item, "destination"))} · {scholarshipValues(item, "study_level").join(", ")}</p>
                   <p className="mb-3 text-sm leading-relaxed text-brand-muted">{item.excerpt}</p>
                   <div className="mb-3 flex flex-wrap gap-2">
                     <span className={`rounded-full px-2.5 py-1 text-xs ${item.data.status_tone === "blue" ? "bg-sky-50 text-sky-900" : "bg-emerald-50 text-emerald-900"}`}>{statusBadge}</span>

@@ -15,6 +15,7 @@ import AdminTrash from "@/components/admin-trash";
 import AdminFaqs from "@/components/admin-faqs";
 import AdminResourceFields from "@/components/admin-resource-fields";
 import type { ServicePricingConfig } from "@/lib/service-pricing";
+import { summarizeCountrySelection } from "@/lib/countries";
 
 type AdminContent = SiteContent & { status: "draft" | "published" | "archived"; body: string; id: string; deleted_at: string | null };
 type AiProvider = "openai" | "anthropic" | "google";
@@ -105,22 +106,24 @@ const fieldsByType: Partial<Record<ContentType, { key: string; label: string }[]
     { key: "salary", label: "Salary information" },
   ],
   scholarship: [
-    { key: "provider", label: "Award provider" },
     { key: "study_level", label: "Study level" },
     { key: "destination", label: "Destination" },
+    { key: "funding_type", label: "Funding type" },
+    { key: "subject_areas", label: "Subject areas" },
+    { key: "eligible_countries", label: "Eligible applicant countries" },
+    { key: "deadline_type", label: "Application deadline" },
+    { key: "deadline", label: "Closing date" },
+    { key: "provider", label: "Award provider" },
     { key: "coverage_primary_title", label: "Funding card 1 heading" },
     { key: "coverage_primary_text", label: "Funding card 1 details" },
     { key: "coverage_secondary_title", label: "Funding card 2 heading" },
     { key: "coverage_secondary_text", label: "Funding card 2 details" },
     { key: "award_coverage", label: "Funding coverage summary (fallback)" },
-    { key: "deadline", label: "Application deadline" },
-    { key: "funding_type", label: "Funding type" },
     { key: "award_badge", label: "Award badge" },
     { key: "application_status", label: "Application status" },
     { key: "cycle_label", label: "Cycle label" },
     { key: "source_checked_at", label: "Source checked date" },
     { key: "eligibility_status", label: "Eligibility status badge" },
-    { key: "subject_areas", label: "Subject areas" },
     { key: "nationality_residence", label: "Nationality and residence" },
     { key: "eligibility_points", label: "Eligibility checks (one per line)" },
     { key: "eligibility_note", label: "Eligibility note" },
@@ -139,7 +142,7 @@ const fieldsByType: Partial<Record<ContentType, { key: string; label: string }[]
   resource: [{ key: "format", label: "Resource format" }],
   testimonial: [{ key: "author", label: "Client name" }, { key: "attribution", label: "Feedback context" }],
 };
-const emptyDraft = { type: "article" as ContentType, title: "", slug: "", excerpt: "", body: "", category: "", source_url: "", expires_at: "", status: "draft" as "draft" | "published", tags: "", data: {} as Record<string, string> };
+const emptyDraft = { type: "article" as ContentType, title: "", slug: "", excerpt: "", body: "", category: "", source_url: "", expires_at: "", published_at: "", status: "draft" as "draft" | "published", tags: "", data: {} as Record<string, string> };
 
 function serializedContentData(data: Record<string, string>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(data).flatMap(([key, value]) => {
@@ -151,8 +154,51 @@ function serializedContentData(data: Record<string, string>): Record<string, unk
         throw new Error("Check the resource section configuration before saving.");
       }
     }
+    if (["study_level", "destination", "funding_type", "subject_areas", "eligible_countries"].includes(key)) {
+      try {
+        const parsed: unknown = JSON.parse(value);
+        if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
+          return parsed.length ? [[key, parsed]] : [];
+        }
+      } catch {
+        return [[key, [value]]];
+      }
+      return [[key, [value]]];
+    }
     return [[key, ["featured", "application_page_available"].includes(key) ? value === "true" : value]];
   }));
+}
+
+function selectedFieldValues(value: string | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) return parsed;
+  } catch {
+    return [value];
+  }
+  return [value];
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}
+
+function plainText(value: string): string {
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function persistedContentBody(body: string): string {
@@ -168,6 +214,21 @@ function persistedContentBody(body: string): string {
       }
     });
     return container.innerHTML;
+}
+
+function localDateTimeValue(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
+function publicationDateValue(value: string): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error("Choose a valid publication date and time.");
+  return date.toISOString();
 }
 
 function AdminLogin({ onAuthenticated, initialError }: { onAuthenticated: () => void; initialError: string }) {
@@ -424,11 +485,21 @@ export default function AdminConsole() {
       category: item.category,
       source_url: item.source_url ?? "",
       expires_at: item.expires_at ? item.expires_at.slice(0, 10) : "",
+      published_at: localDateTimeValue(item.published_at ?? (
+        typeof item.data.published_date === "string"
+          ? `${item.data.published_date}T00:00:00Z`
+          : null
+      )),
       status: item.status === "published" ? "published" : "draft",
       tags: item.tags.join(", "),
       data: item.type === "service" ? {} : Object.fromEntries(Object.entries(item.data)
         .filter(([key]) => key !== "attachments")
-        .map(([key, value]) => [key, key === "resource_schema" ? JSON.stringify(value) : String(value)])),
+        .map(([key, value]) => [
+          key,
+          key === "resource_schema" || Array.isArray(value)
+            ? JSON.stringify(value)
+            : String(value),
+        ])),
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -439,6 +510,25 @@ export default function AdminConsole() {
       setContentPreview(false);
       return;
     }
+    if (draft.type === "scholarship" && status === "published") {
+      const requiredFilters = ["study_level", "destination", "funding_type", "subject_areas", "eligible_countries"];
+      const missingFilters = requiredFilters.filter((key) => selectedFieldValues(draft.data[key]).length === 0);
+      const deadlineType = draft.data.deadline_type;
+      const hasDeadline = deadlineType === "rolling"
+        || deadlineType === "unknown"
+        || (deadlineType === "fixed" && /^\d{4}-\d{2}-\d{2}$/.test(draft.data.deadline ?? ""));
+      const hasDetails = plainText(draft.body).length >= 80;
+      const issues = [
+        ...missingFilters.map((key) => `${key.replaceAll("_", " ")} selection`),
+        ...(!hasDeadline ? ["deadline"] : []),
+        ...(!isHttpUrl(draft.source_url) ? ["official application link"] : []),
+        ...(!hasDetails ? ["scholarship details (at least 80 characters)"] : []),
+      ];
+      if (issues.length) {
+        setNotice(`Complete these details before publishing: ${issues.join(", ")}.`);
+        return;
+      }
+    }
     setBusy(true);
     setNotice("");
     const contentId = editingContentId.current;
@@ -446,11 +536,22 @@ export default function AdminConsole() {
       const body = {
         ...draft,
         body: persistedContentBody(draft.body),
+        excerpt: draft.type === "scholarship" && !draft.excerpt.trim()
+          ? plainText(draft.body).slice(0, 240)
+          : draft.excerpt,
         type: contentType ?? draft.type,
         status,
         tags: draft.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
-        expires_at: draft.expires_at ? new Date(`${draft.expires_at}T23:59:59.000Z`).toISOString() : null,
-        source_url: draft.source_url || null,
+        published_at: draft.type === "article" ? publicationDateValue(draft.published_at) : undefined,
+        expires_at: (() => {
+          const scholarshipDeadline = draft.data.deadline_type === "fixed"
+            && /^\d{4}-\d{2}-\d{2}$/.test(draft.data.deadline ?? "")
+            ? draft.data.deadline
+            : "";
+          const expiryDate = draft.type === "article" ? "" : draft.type === "scholarship" ? scholarshipDeadline : draft.expires_at;
+          return expiryDate ? new Date(`${expiryDate}T23:59:59.000Z`).toISOString() : null;
+        })(),
+        source_url: draft.type === "article" ? null : draft.source_url || null,
         data: draft.type === "service"
           ? { ...preservedContentData.current, ...serializedContentData(draft.data) }
           : serializedContentData(draft.data),
@@ -489,7 +590,7 @@ export default function AdminConsole() {
 
   function submitContent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isEditingPublished) {
+    if (isEditingPublished || ["job", "scholarship"].includes(contentType ?? draft.type)) {
       setContentPreview(true);
       return;
     }
@@ -567,8 +668,9 @@ export default function AdminConsole() {
       type: aiType,
       status,
       tags: [],
-      expires_at: draft.expires_at ? new Date(`${draft.expires_at}T23:59:59.000Z`).toISOString() : null,
-      source_url: draft.source_url || null,
+      published_at: aiType === "article" ? publicationDateValue(draft.published_at) : undefined,
+      expires_at: aiType === "article" ? null : draft.expires_at ? new Date(`${draft.expires_at}T23:59:59.000Z`).toISOString() : null,
+      source_url: aiType === "article" ? null : draft.source_url || null,
       data: serializedContentData(draft.data),
     };
     try {
@@ -799,15 +901,28 @@ export default function AdminConsole() {
   const title = sectionTitles[section] ?? "Your studio";
   const sectionContents = contentType ? contents.filter((item) => item.type === contentType) : contents;
   const pricingForm = settingsForm.service_pricing;
+  const scholarshipChecks = [
+    { label: "Scholarship title", complete: draft.title.trim().length >= 3 },
+    { label: "Search filters selected", complete: ["study_level", "destination", "funding_type", "subject_areas", "eligible_countries"].every((key) => selectedFieldValues(draft.data[key]).length > 0) },
+    { label: "Deadline selected", complete: draft.data.deadline_type === "rolling" || draft.data.deadline_type === "unknown" || (draft.data.deadline_type === "fixed" && /^\d{4}-\d{2}-\d{2}$/.test(draft.data.deadline ?? "")) },
+    { label: "Official link added", complete: isHttpUrl(draft.source_url) },
+    { label: "Scholarship details added", complete: plainText(draft.body).length >= 80 },
+  ];
+  const scholarshipSlugPreview = draft.slug || draft.title
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 
   return <div className="min-h-screen bg-brand-cream font-sans lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
-    <aside className="sticky top-0 z-20 flex max-h-screen flex-col gap-4 overflow-y-auto bg-brand-ink p-4 text-white max-lg:static max-lg:max-h-none">
-      <div className="grid gap-2 border-b border-white/15 pb-4"><SiteBrand footer /><span className="text-xs font-bold uppercase tracking-widest text-brand-footer-hover">CONTENT STUDIO</span></div>
-      <nav className="grid gap-1" aria-label="Dashboard navigation">{navItems.map(([label, href, key]) => <Link key={href} href={href} aria-current={section === key ? "page" : undefined} className={`flex items-center gap-2 rounded px-3 py-2 text-sm font-semibold transition hover:bg-white/10 ${section === key ? "bg-brand-purple text-white" : "text-brand-footer-link"}`}><span className={`size-1.5 rounded-full ${section === key ? "bg-brand-orange" : "bg-brand-footer-muted"}`} />{label}</Link>)}</nav>
-      <div className="mt-auto grid gap-2 border-t border-white/15 pt-4 text-sm"><Link className="text-brand-footer-link hover:text-white" href="/">↗ View website</Link><button className="text-left text-brand-footer-link hover:text-white" onClick={() => void logout()}>↗ Sign out</button><small className="text-xs text-brand-footer-muted">Careergrill · Private dashboard</small></div>
+    <aside className="sticky top-0 z-20 flex max-h-screen flex-col gap-4 overflow-y-auto border-r border-brand-line bg-white p-4 text-brand-ink max-lg:static max-lg:max-h-none">
+      <div className="grid gap-2 border-b border-brand-line pb-4"><SiteBrand footer /><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">CONTENT STUDIO</span></div>
+      <nav className="grid gap-1" aria-label="Dashboard navigation">{navItems.map(([label, href, key]) => <Link key={href} href={href} aria-current={section === key ? "page" : undefined} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-brand-blue ${section === key ? "bg-brand-sage text-brand-purple" : "text-brand-muted"}`}><span className={`size-1.5 rounded-full ${section === key ? "bg-brand-orange" : "bg-brand-line"}`} />{label}</Link>)}</nav>
+      <div className="mt-auto grid gap-2 border-t border-brand-line pt-4 text-sm"><Link className="text-brand-purple hover:underline" href="/">↗ View website</Link><button className="text-left text-brand-purple hover:underline" onClick={() => void logout()}>↗ Sign out</button><small className="text-xs text-brand-muted">Careergrill · Private dashboard</small></div>
     </aside>
     <main className="min-w-0">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-brand-line bg-brand-cream/95 px-5 py-3 backdrop-blur sm:px-8"><div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">CONTENT STUDIO / {section || "OVERVIEW"}</span><h1 className="mb-0 mt-1 text-2xl">{title}</h1></div><span className="grid size-10 place-items-center rounded-full bg-brand-purple text-sm font-bold text-white" title={sessionUser?.email}>{sessionUser?.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "AD"}</span></header>
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-brand-line bg-white px-5 py-3 sm:px-8"><div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">CONTENT STUDIO / {section || "OVERVIEW"}</span><h1 className="mb-0 mt-1 text-2xl">{title}</h1></div><span className="grid size-10 place-items-center rounded-full bg-brand-sage text-sm font-bold text-brand-purple" title={sessionUser?.email}>{sessionUser?.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "AD"}</span></header>
       <div className="mx-auto grid max-w-7xl gap-4 p-4 sm:p-7">
         {["ai", "files"].includes(section) && files.some((item) => item.processing_status !== "ready") && <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="status">
           {files.filter((item) => item.processing_status === "processing").map((item) => `${item.filename}: indexing in progress.`).join(" ")}
@@ -841,7 +956,7 @@ export default function AdminConsole() {
             <form className="grid content-start gap-4 rounded border border-brand-line bg-white p-5 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-sm [&_label]:font-semibold [&_input]:min-h-10 [&_input]:rounded [&_input]:border [&_input]:border-brand-line [&_input]:px-3 [&_input]:py-2 [&_input]:font-normal [&_select]:min-h-10 [&_select]:rounded [&_select]:border [&_select]:border-brand-line [&_select]:bg-white [&_select]:px-3 [&_select]:py-2 [&_select]:font-normal [&_textarea]:rounded [&_textarea]:border [&_textarea]:border-brand-line [&_textarea]:px-3 [&_textarea]:py-2 [&_textarea]:font-normal" onSubmit={submitContent}>
               <div className="flex items-center justify-between gap-3"><div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">{editingId ? "EDIT CONTENT" : "MANUAL EDITOR"}</span><h2 className="mb-0 mt-1 text-2xl">{contentPreview ? "Reader preview." : editingId ? "Refine your draft." : "Write for the reader."}</h2></div><button type="button" className="rounded border border-brand-line px-3 py-2 text-sm font-semibold text-brand-purple hover:bg-brand-blue" aria-pressed={contentPreview} onClick={() => setContentPreview((current) => !current)}>{contentPreview ? "✎ Edit" : "Preview ↗"}</button></div>
               {contentPreview ? <>
-                <ContentPreview type={contentType ?? draft.type} title={draft.title} excerpt={draft.excerpt} body={draft.body} category={draft.category} data={draft.data} sourceUrl={draft.source_url} />
+                <ContentPreview type={contentType ?? draft.type} title={draft.title} excerpt={draft.excerpt || (draft.type === "scholarship" ? plainText(draft.body).slice(0, 240) : "")} body={draft.body} category={draft.category} data={draft.data} sourceUrl={draft.source_url} />
                 <div className="flex flex-wrap justify-between gap-2 border-t border-brand-line pt-4">
                   <button className={buttonVariants({ variant: "outline", size: "sm" })} type="button" onClick={() => setContentPreview(false)}>Back to editor</button>
                   <div className="flex flex-wrap gap-2">
@@ -850,27 +965,94 @@ export default function AdminConsole() {
                   </div>
                 </div>
               </> : <>
-              <div className="grid gap-3 sm:grid-cols-2">{contentType ? <label>Content type<input value={contentTypes.find((item) => item.value === contentType)?.label ?? contentType} readOnly /></label> : <label>Content type<select value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value as ContentType })}>{contentTypes.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}</select></label>}<label>Category<input value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })} placeholder="Scholarships, graduate admissions…" /></label></div>
-              <label>Title<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} required minLength={3} maxLength={180} /></label>
-              <div className="grid gap-3 sm:grid-cols-2"><label>URL slug<input value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value })} placeholder="leave blank to generate" /></label><label>Tags<input value={draft.tags} onChange={(event) => setDraft({ ...draft, tags: event.target.value })} placeholder="Comma-separated" /></label></div>
-              <label>Short introduction<textarea value={draft.excerpt} onChange={(event) => setDraft({ ...draft, excerpt: event.target.value })} rows={3} maxLength={500} /></label>
-              {fieldsByType[draft.type]?.length ? <AdminContentFields fields={fieldsByType[draft.type] ?? []} data={draft.data} onChange={(key, value) => setDraft((current) => ({ ...current, data: { ...current.data, [key]: value } }))} /> : null}
-              {draft.type === "resource" && <AdminResourceFields
-                value={draft.data.resource_schema ?? ""}
-                onChange={(value) => setDraft((current) => ({ ...current, data: { ...current.data, resource_schema: value } }))}
-                attachments={resourceAttachments}
-                onAttachmentsChange={setResourceAttachments}
-                files={resourceFiles}
-                onFilesChange={setResourceFiles}
-                resourceId={editingId}
-              />}
-              <label>Content</label><RichTextEditor value={draft.body} onChange={(body) => setDraft((current) => ({ ...current, body }))} onError={setNotice} />
-              <div className="grid gap-3 sm:grid-cols-2"><label>Official source URL<input type="url" value={draft.source_url} onChange={(event) => setDraft({ ...draft, source_url: event.target.value })} placeholder="https://" /></label><label>Expiry date<input type="date" value={draft.expires_at} onChange={(event) => setDraft({ ...draft, expires_at: event.target.value })} /></label></div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-line pt-4"><span className="text-xs text-brand-muted">{editingId ? "Preview your edits before updating this item." : "Preview before publishing to check how this appears to readers."}</span><div className="flex gap-2"><button type="button" className={buttonVariants({ variant: "outline", size: "sm" })} onClick={() => { editingContentId.current = ""; setEditingId(""); setIsEditingPublished(false); setContentPreview(false); setResourceAttachments([]); setResourceFiles([]); setDraft({ ...emptyDraft, type: contentType ?? "article" }); }}>Clear</button><button className={buttonVariants({ variant: "brand", size: "sm" })} disabled={busy}>{busy ? "Saving…" : editingId ? "Preview changes" : "Save draft"}</button></div></div>
+              {contentType === "scholarship" ? <>
+                <section className="grid gap-4">
+                  <label>Scholarship title<input className="font-display text-lg font-bold" value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} required minLength={3} maxLength={180} placeholder="Paste the scholarship title" /></label>
+                  <p className="-mt-2 mb-0 text-xs text-brand-muted">careergrill.com/scholarship/{scholarshipSlugPreview || "your-scholarship-title"}</p>
+                </section>
+                {fieldsByType.scholarship && <AdminContentFields
+                  fields={fieldsByType.scholarship}
+                  data={draft.data}
+                  compactScholarship
+                  optionalContent={<label>Custom listing introduction<textarea value={draft.excerpt} onChange={(event) => setDraft({ ...draft, excerpt: event.target.value })} rows={3} maxLength={500} placeholder="Leave blank to use the opening text" /></label>}
+                  onChange={(key, value) => setDraft((current) => ({ ...current, data: { ...current.data, [key]: value } }))}
+                />}
+                <label>Official application link<input type="text" inputMode="url" value={draft.source_url} onChange={(event) => setDraft({ ...draft, source_url: event.target.value })} placeholder="https://…" /><small className="font-normal text-brand-muted">Link to the provider’s official page or application.</small></label>
+                <div className="grid gap-2">
+                  <label>Scholarship details</label>
+                  <RichTextEditor value={draft.body} onChange={(body) => setDraft((current) => ({ ...current, body }))} onError={setNotice} />
+                  <p className="mb-0 text-xs text-brand-muted">Paste the complete write-up. Headings, lists and links are preserved.</p>
+                  <div className="rounded bg-brand-blue p-3 text-xs"><strong className="mb-1 block text-brand-purple">Automatic listing introduction</strong><span className="text-brand-muted">{draft.excerpt || plainText(draft.body).slice(0, 240) || "The opening text will appear here."}</span></div>
+                </div>
+              </> : <>
+                <div className="grid gap-3 sm:grid-cols-2">{contentType ? <label>Content type<input value={contentTypes.find((item) => item.value === contentType)?.label ?? contentType} readOnly /></label> : <label>Content type<select value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value as ContentType })}>{contentTypes.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}</select></label>}<label>Category<input value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })} placeholder="Scholarships, graduate admissions…" /></label></div>
+                <label>Title<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} required minLength={3} maxLength={180} /></label>
+                <div className="grid gap-3 sm:grid-cols-2"><label>URL slug<input value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value })} placeholder="leave blank to generate" /></label><label>Tags<input value={draft.tags} onChange={(event) => setDraft({ ...draft, tags: event.target.value })} placeholder="Comma-separated" /></label></div>
+                <label>Short introduction<textarea value={draft.excerpt} onChange={(event) => setDraft({ ...draft, excerpt: event.target.value })} rows={3} maxLength={500} /></label>
+                {draft.type === "article" && <label>Publication date and time<input type="datetime-local" value={draft.published_at} onChange={(event) => setDraft({ ...draft, published_at: event.target.value })} /><small className="font-normal text-brand-muted">Optional. Leave blank to set automatically when published; choose an earlier date and time to backdate this post.</small></label>}
+                {fieldsByType[draft.type]?.length ? <AdminContentFields fields={fieldsByType[draft.type] ?? []} data={draft.data} articleEditor={draft.type === "article"} onChange={(key, value) => setDraft((current) => ({ ...current, data: { ...current.data, [key]: value } }))} /> : null}
+                {draft.type === "resource" && <AdminResourceFields
+                  value={draft.data.resource_schema ?? ""}
+                  onChange={(value) => setDraft((current) => ({ ...current, data: { ...current.data, resource_schema: value } }))}
+                  attachments={resourceAttachments}
+                  onAttachmentsChange={setResourceAttachments}
+                  files={resourceFiles}
+                  onFilesChange={setResourceFiles}
+                  resourceId={editingId}
+                />}
+                <label>Content</label><RichTextEditor value={draft.body} onChange={(body) => setDraft((current) => ({ ...current, body }))} onError={setNotice} />
+                {draft.type !== "article" && <div className="grid gap-3 sm:grid-cols-2"><label>Official source URL<input type="url" value={draft.source_url} onChange={(event) => setDraft({ ...draft, source_url: event.target.value })} placeholder="https://" /></label><label>Expiry date<input type="date" value={draft.expires_at} onChange={(event) => setDraft({ ...draft, expires_at: event.target.value })} /></label></div>}
+              </>}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-line pt-4"><span className="text-xs text-brand-muted">{editingId ? "Preview your edits before updating this item." : "Preview before publishing to check how this appears to readers."}</span><div className="flex gap-2"><button type="button" className={buttonVariants({ variant: "outline", size: "sm" })} onClick={() => { editingContentId.current = ""; setEditingId(""); setIsEditingPublished(false); setContentPreview(false); setResourceAttachments([]); setResourceFiles([]); setDraft({ ...emptyDraft, type: contentType ?? "article" }); }}>Clear</button><button className={buttonVariants({ variant: "brand", size: "sm" })} disabled={busy}>{busy ? "Saving…" : editingId || ["job", "scholarship"].includes(contentType ?? draft.type) ? "Preview before saving" : "Save draft"}</button></div></div>
               </>}
             </form>
           </div>
-          <div className="grid content-start gap-4 rounded border border-brand-line bg-white p-5"><div className="flex items-center justify-between gap-3"><div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">{contentType ? (contentTypes.find((item) => item.value === contentType)?.label ?? "Content").toUpperCase() : "CONTENT LIBRARY"}</span><h2 className="mb-0 mt-1 text-2xl">{sectionContents.length} items</h2></div><Link href="/dashboard/ai" className="text-sm font-semibold text-brand-purple hover:underline">Create with AI ↗</Link></div>{sectionContents.map((item) => <article className="grid gap-2 border-t border-brand-line pt-4" key={item.id}><div className="flex items-center gap-2 text-xs font-semibold uppercase text-brand-muted"><span className={`size-2 rounded-full ${item.status === "published" ? "bg-green-600" : item.status === "draft" ? "bg-amber-500" : "bg-slate-400"}`} />{item.status} · {item.type}</div><h3 className="mb-0 text-lg font-bold">{item.title}</h3><p className="mb-0 text-sm text-brand-muted">{item.excerpt || "No description added yet."}</p><div className="flex flex-wrap gap-3 text-sm font-semibold text-brand-purple"><button className="hover:underline" onClick={() => editContent(item)}>Edit</button>{item.status === "published" ? <Link className="hover:underline" href={contentHref(item.type, item.slug)} target="_blank">Preview ↗</Link> : <button className="hover:underline" onClick={() => { editContent(item); setContentPreview(true); }}>Preview ↗</button>}<button className="text-red-700 hover:underline" onClick={() => void deleteContent(item.id)}>Delete</button></div></article>)}{!sectionContents.length && <p className="mb-0 rounded bg-brand-blue p-4 text-sm text-brand-muted">No {contentType ? `${contentTypes.find((item) => item.value === contentType)?.label.toLowerCase()} items` : "content"} yet. Create a draft or use the AI studio to get started.</p>}</div>
+          {contentType === "scholarship" ? <aside className="grid content-start gap-4">
+            <section className="grid gap-3 rounded-lg border border-brand-line bg-white p-5">
+              <h2 className="mb-0 text-lg">Publication</h2>
+              <div className="flex items-center justify-between text-sm"><span className="text-brand-muted">Status</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${draft.status === "published" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>{draft.status}</span></div>
+              <label className="flex cursor-pointer items-start gap-3 rounded bg-brand-cream p-3 text-sm">
+                <input className="mt-1 size-4 accent-brand-purple" type="checkbox" checked={draft.data.featured === "true"} onChange={(event) => setDraft((current) => ({ ...current, data: { ...current.data, featured: String(event.target.checked) } }))} />
+                <span><strong>Feature this scholarship</strong><small className="mt-1 block font-normal text-brand-muted">Show it in the featured list. Other listings remain searchable.</small></span>
+              </label>
+            </section>
+            <section className="grid gap-3 rounded-lg border border-brand-line bg-white p-5">
+              <h2 className="mb-0 text-lg">Ready to publish?</h2>
+              <ul className="grid gap-2">
+                {scholarshipChecks.map(({ label, complete }) => <li className="flex items-center gap-2 text-sm" key={label}><span className={`grid size-5 place-items-center rounded-full text-xs ${complete ? "bg-emerald-100 text-emerald-800" : "bg-brand-cream text-brand-muted"}`}>{complete ? "✓" : "·"}</span><span className={complete ? "text-brand-ink" : "text-brand-muted"}>{label}</span></li>)}
+              </ul>
+            </section>
+            <section className="grid gap-3 rounded-lg border border-brand-line bg-white p-5">
+              <span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">LIVE FILTER PREVIEW</span>
+              <h2 className="mb-0 text-lg">Your listing will match</h2>
+              <p className="mb-0 text-sm text-brand-muted">These are the values readers will use to find this scholarship.</p>
+              <dl className="grid gap-2">
+                {[
+                  { label: "Study level", values: selectedFieldValues(draft.data.study_level) },
+                  { label: "Destination", values: selectedFieldValues(draft.data.destination) },
+                  { label: "Funding", values: selectedFieldValues(draft.data.funding_type) },
+                  { label: "Subjects", values: selectedFieldValues(draft.data.subject_areas) },
+                  { label: "Applicant countries", values: selectedFieldValues(draft.data.eligible_countries) },
+                ].map(({ label, values }) => <div className="border-t border-brand-line pt-2" key={label}><dt className="text-xs text-brand-muted">{label}</dt><dd className="mb-0 mt-1 text-sm font-semibold">{values.length ? (label === "Destination" || label === "Applicant countries" ? summarizeCountrySelection(values) : values.join(", ")) : "Not selected"}</dd></div>)}
+              </dl>
+            </section>
+            <details className="rounded-lg border border-brand-line bg-white p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-brand-purple">{sectionContents.length} existing scholarships</summary>
+              <div className="mt-3 grid gap-3">
+                <Link href="/dashboard/ai" className="text-sm font-semibold text-brand-purple hover:underline">Create with AI ↗</Link>
+                {sectionContents.map((item) => <article className="grid gap-1 border-t border-brand-line pt-3" key={item.id}>
+                  <div className="text-xs font-semibold uppercase text-brand-muted">{item.status}</div>
+                  <h3 className="mb-0 text-sm font-bold">{item.title}</h3>
+                  <div className="flex flex-wrap gap-3 text-sm font-semibold text-brand-purple">
+                    <button className="hover:underline" onClick={() => editContent(item)}>Edit</button>
+                    {item.status === "published" ? <Link className="hover:underline" href={contentHref(item.type, item.slug)} target="_blank">Preview ↗</Link> : <button className="hover:underline" onClick={() => { editContent(item); setContentPreview(true); }}>Preview ↗</button>}
+                    <button className="text-red-700 hover:underline" onClick={() => void deleteContent(item.id)}>Delete</button>
+                  </div>
+                </article>)}
+                {!sectionContents.length && <p className="mb-0 text-sm text-brand-muted">No scholarships have been added yet.</p>}
+              </div>
+            </details>
+          </aside> : <div className="grid content-start gap-4 rounded border border-brand-line bg-white p-5"><div className="flex items-center justify-between gap-3"><div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">{contentType ? (contentTypes.find((item) => item.value === contentType)?.label ?? "Content").toUpperCase() : "CONTENT LIBRARY"}</span><h2 className="mb-0 mt-1 text-2xl">{sectionContents.length} items</h2></div><Link href="/dashboard/ai" className="text-sm font-semibold text-brand-purple hover:underline">Create with AI ↗</Link></div>{sectionContents.map((item) => <article className="grid gap-2 border-t border-brand-line pt-4" key={item.id}><div className="flex items-center gap-2 text-xs font-semibold uppercase text-brand-muted"><span className={`size-2 rounded-full ${item.status === "published" ? "bg-green-600" : item.status === "draft" ? "bg-amber-500" : "bg-slate-400"}`} />{item.status} · {item.type}</div><h3 className="mb-0 text-lg font-bold">{item.title}</h3><p className="mb-0 text-sm text-brand-muted">{item.excerpt || "No description added yet."}</p><div className="flex flex-wrap gap-3 text-sm font-semibold text-brand-purple"><button className="hover:underline" onClick={() => editContent(item)}>Edit</button>{item.status === "published" ? <Link className="hover:underline" href={contentHref(item.type, item.slug)} target="_blank">Preview ↗</Link> : <button className="hover:underline" onClick={() => { editContent(item); setContentPreview(true); }}>Preview ↗</button>}<button className="text-red-700 hover:underline" onClick={() => void deleteContent(item.id)}>Delete</button></div></article>)}{!sectionContents.length && <p className="mb-0 rounded bg-brand-blue p-4 text-sm text-brand-muted">No {contentType ? `${contentTypes.find((item) => item.value === contentType)?.label.toLowerCase()} items` : "content"} yet. Create a draft or use the AI studio to get started.</p>}</div>}
         </section> : null}
         {section === "ai" && <section className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(16rem,.8fr)]">
           <div className="grid content-start gap-4 rounded border border-brand-line bg-white p-5 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-sm [&_label]:font-semibold [&_select]:min-h-10 [&_select]:rounded [&_select]:border [&_select]:border-brand-line [&_select]:bg-white [&_select]:px-3 [&_select]:py-2 [&_select]:font-normal [&_textarea]:rounded [&_textarea]:border [&_textarea]:border-brand-line [&_textarea]:px-3 [&_textarea]:py-2 [&_textarea]:font-normal">
