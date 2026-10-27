@@ -9,6 +9,7 @@ import { contentHref, type ContentType, type SiteContent } from "@/lib/site-data
 import type { ResourceAttachment } from "@/lib/resource-tools";
 import { SiteBrand } from "@/components/site-shell";
 import RichTextEditor from "@/components/rich-text-editor";
+import RichContent, { auditFeedbackStyles } from "@/components/rich-content";
 import ContentPreview from "@/components/content-preview";
 import AdminContentFields from "@/components/admin-content-fields";
 import AdminTrash from "@/components/admin-trash";
@@ -999,7 +1000,7 @@ export default function AdminConsole() {
                 </div>
                 <span className="rounded bg-brand-sage px-2.5 py-1 text-sm font-semibold text-brand-purple">{audit.rating === null ? "Not rated" : `Rating: ${audit.rating}/5`}</span>
               </header>
-              <div className="whitespace-pre-wrap text-sm leading-relaxed text-brand-muted">{audit.feedback}</div>
+              <RichContent value={audit.feedback} markdownOnly className={auditFeedbackStyles} />
             </article>) : <p className="rounded border border-brand-line bg-white p-5 text-sm text-brand-muted">No Career Audit responses have been saved yet.</p>}
           </>}
         </section>}

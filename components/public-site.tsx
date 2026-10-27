@@ -11,7 +11,7 @@ import { homeMarketingCopy } from "@/lib/static-public-copy";
 import type { HomeMarketingCopy } from "@/lib/public-copy";
 import type { ServicePricingConfig } from "@/lib/service-pricing";
 import { Eyebrow } from "@/components/site-shell";
-import RichContent from "@/components/rich-content";
+import RichContent, { auditFeedbackStyles } from "@/components/rich-content";
 import ResourceToolDetail from "@/components/resource-tool-detail";
 import { cn } from "@/lib/utils";
 import PageHeader from "./ui/page-header";
@@ -975,8 +975,13 @@ export function AuditPage() {
     { label: "A scholarship", goal: "A scholarship", detail: "Study goals and funding preparation." },
     { label: "A fellowship", goal: "A fellowship", detail: "Professional development and contribution." },
   ];
-  return <Container className="py-20 gap-10 md:gap-20">
-    <aside className="grid content-start gap-6 md:w-[60%] self-start py-1">
+  return <Container className={cn(
+    "!grid min-w-0 items-start gap-8 py-10 sm:px-5 lg:gap-10 lg:py-14",
+    feedback
+      ? "lg:grid-cols-[minmax(12rem,.7fr)_minmax(16rem,1fr)_minmax(20rem,1.3fr)]"
+      : "md:grid-cols-[minmax(13rem,.7fr)_minmax(0,1.3fr)]",
+  )}>
+    <aside className="grid min-w-0 content-start gap-6 self-start py-1">
       <Link className="text-sm font-semibold text-brand-purple underline underline-offset-2 hover:no-underline" href="/">← Back to Careergrill</Link>
       <div>
         <Eyebrow>AI Career Audit</Eyebrow>
@@ -997,7 +1002,7 @@ export function AuditPage() {
         <Link className="font-semibold text-brand-purple hover:text-brand-orange-dark underline" href="/workspace/audits">See an example action plan</Link>
       </div>
     </aside>
-    <form className="grid content-start gap-4 w-full rounded-lg border border-brand-line bg-white p-5 sm:p-6" onSubmit={(event) => void generate(event)}>
+    <form className="grid min-w-0 w-full content-start gap-4 rounded-lg border border-brand-line bg-white p-5 sm:p-6" onSubmit={(event) => void generate(event)}>
       {auditAvailable === false && <div className="rounded-md border border-[#e4c999] bg-[#fff7e8] p-3 text-sm" role="status"><strong>AI feedback is temporarily unavailable.</strong><p className="mb-0 mt-1 text-brand-muted">You can still complete and save your audit. Your answers will stay in this tab until the service is available.</p></div>}
       {auditAvailable === null && <p className="mb-0 rounded-md bg-brand-blue p-3 text-sm" role="status">Checking AI feedback availability…</p>}
       <p className="mb-0 text-sm leading-relaxed text-brand-muted">Fields marked “Needed for AI feedback” are required to generate an assessment. You can save an incomplete draft.</p>
@@ -1057,7 +1062,7 @@ export function AuditPage() {
       <small className="text-xs leading-relaxed text-brand-muted">Up to five generation attempts per account each day, subject to service capacity. Failed attempts count. Reading saved feedback does not use an attempt.</small>
       <div className="flex flex-wrap justify-between gap-3 border-t border-brand-line pt-3"><button type="button" className="text-sm font-semibold text-brand-purple hover:text-brand-orange-dark underline" onClick={() => { sessionStorage.removeItem("careergrill-audit-draft"); setAnswers({ direction: "", experience: "", evidence: "", concerns: "", target: "", timeline: "" }); setFeedback(""); setAuditId(""); setAuditRating(null); setStep(1); setNotice("This tab’s draft has been cleared."); }}>Clear this tab’s draft</button><Link className="text-sm font-semibold text-brand-purple hover:text-brand-orange-dark underline" href="/faq">Questions about the audit? ↗</Link></div>
     </form>
-    {feedback && <section className="rounded border border-brand-line bg-brand-sage p-5 lg:col-start-2"><Eyebrow>Your application direction</Eyebrow><h2 className="my-2 text-2xl">A practical next-step plan.</h2><div className="space-y-2 leading-relaxed text-brand-muted">{feedback.split("\n").map((line, index) => <p className="mb-0" key={index}>{line}</p>)}</div>{auditId && <AuditRating key={auditId} auditId={auditId} initialRating={auditRating} />}</section>}
+    {feedback && <section className="min-w-0 rounded border border-brand-line bg-brand-sage p-5 sm:p-6"><Eyebrow>Your application direction</Eyebrow><h2 className="my-2 text-2xl">A practical next-step plan.</h2><RichContent value={feedback} markdownOnly className={auditFeedbackStyles} />{auditId && <AuditRating key={auditId} auditId={auditId} initialRating={auditRating} />}</section>}
   </Container>;
 }
 
