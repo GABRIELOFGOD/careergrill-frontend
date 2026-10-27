@@ -711,16 +711,60 @@ interface SavedItem {
   content_items: SiteContent & { deleted_at?: string | null };
 }
 
+function AuditRating({ auditId, initialRating }: { auditId: string; initialRating: number | null }) {
+  const [rating, setRating] = useState(initialRating);
+  const [selection, setSelection] = useState(initialRating);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  async function saveRating() {
+    if (selection === null) return;
+    setSaving(true);
+    setNotice("");
+    try {
+      const result = await apiRequest<{ item: { rating: number } }>(`/audits/${auditId}/rating`, {
+        method: "PATCH",
+        body: JSON.stringify({ rating: selection }),
+      });
+      setRating(result.item.rating);
+      setSelection(result.item.rating);
+      setNotice("Thanks for rating this feedback.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save your rating.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <fieldset className="grid gap-2 border-t border-brand-line pt-3">
+    <legend className="text-sm font-semibold">How useful was this feedback?</legend>
+    <div className="flex items-center gap-1" role="group" aria-label="Rate this Career Audit from 1 to 5">
+      {[1, 2, 3, 4, 5].map((value) => <button
+        className={`rounded px-1 text-2xl leading-none ${selection !== null && value <= selection ? "text-brand-orange-dark" : "text-brand-muted"}`}
+        key={value}
+        type="button"
+        aria-label={`${value} out of 5`}
+        aria-pressed={selection === value}
+        disabled={saving}
+        onClick={() => setSelection(value)}
+      >★</button>)}
+      <span className="ml-2 text-xs text-brand-muted">{rating === null ? "Not rated" : `Saved rating: ${rating}/5`}</span>
+    </div>
+    {selection !== rating && <button className="justify-self-start text-sm font-semibold text-brand-purple hover:underline" type="button" disabled={saving} onClick={() => void saveRating()}>{saving ? "Saving…" : "Save rating"}</button>}
+    {notice && <p className="mb-0 text-xs text-brand-muted" role="status">{notice}</p>}
+  </fieldset>;
+}
+
 export function WorkspacePage({ view = "scholarships" }: { view?: "scholarships" | "jobs" | "audits" }) {
   const [items, setItems] = useState<SavedItem[]>([]);
-  const [audits, setAudits] = useState<{ id: string; goal: string; feedback: string; created_at: string }[]>([]);
+  const [audits, setAudits] = useState<{ id: string; goal: string; feedback: string; rating: number | null; created_at: string }[]>([]);
   const [notice, setNotice] = useState("Loading your saved workspace…");
   const [stage, setStage] = useState("all");
   useEffect(() => {
     setNotice("Loading your saved workspace…");
     setStage("all");
     const request = view === "audits"
-      ? apiRequest<{ items: { id: string; goal: string; feedback: string; created_at: string }[] }>("/audits")
+      ? apiRequest<{ items: { id: string; goal: string; feedback: string; rating: number | null; created_at: string }[] }>("/audits")
         .then(({ items: auditHistory }) => { setAudits(auditHistory); setNotice(""); })
       : apiRequest<{ items: SavedItem[] }>("/saved")
         .then(({ items: savedItems }) => { setItems(savedItems); setNotice(""); });
@@ -828,6 +872,7 @@ export function WorkspacePage({ view = "scholarships" }: { view?: "scholarships"
         {isAuditView && (audits.length ? <div className="grid gap-3">{audits.map((audit) => <article className="rounded border border-brand-line bg-white p-4" key={audit.id}>
           <div className="mb-2 flex items-center justify-between gap-3"><span className="rounded-full bg-brand-blue px-2.5 py-1 text-xs font-semibold">{audit.goal}</span><small className="text-xs text-brand-muted">{new Date(audit.created_at).toLocaleDateString()}</small></div>
           <p className="text-sm leading-relaxed text-brand-muted">{audit.feedback.slice(0, 500)}{audit.feedback.length > 500 ? "…" : ""}</p>
+          <AuditRating auditId={audit.id} initialRating={audit.rating} />
           <button className="text-sm font-semibold text-brand-purple hover:underline" onClick={() => void deleteAudit(audit.id)}>Delete audit</button>
         </article>)}</div> : !notice && <p className="text-sm text-brand-muted">Your audit history will appear here after you generate feedback.</p>)}
       </div>
@@ -857,6 +902,8 @@ export function AuditPage() {
   const [answers, setAnswers] = useState({ direction: "", experience: "", evidence: "", concerns: "", target: "", timeline: "" });
   const [notice, setNotice] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [auditId, setAuditId] = useState("");
+  const [auditRating, setAuditRating] = useState<number | null>(null);
   const [auditAvailable, setAuditAvailable] = useState<boolean | null>(null);
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -912,8 +959,10 @@ export function AuditPage() {
     }
     setNotice("Preparing your feedback…");
     try {
-      const result = await apiRequest<{ feedback: string }>("/audits/feedback", { method: "POST", body: JSON.stringify({ goal, answers, consent: true }) });
+      const result = await apiRequest<{ item: { id: string; rating: number | null }; feedback: string }>("/audits/feedback", { method: "POST", body: JSON.stringify({ goal, answers, consent: true }) });
       setFeedback(result.feedback);
+      setAuditId(result.item.id);
+      setAuditRating(result.item.rating);
       setNotice("Your action plan is ready and saved to your account.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "We could not prepare feedback.");
@@ -1006,9 +1055,9 @@ export function AuditPage() {
           : <button className={buttonVariants({ variant: "brand", size: "sm" })} disabled={auditAvailable !== true}>Generate AI feedback</button>}
       </div>
       <small className="text-xs leading-relaxed text-brand-muted">Up to five generation attempts per account each day, subject to service capacity. Failed attempts count. Reading saved feedback does not use an attempt.</small>
-      <div className="flex flex-wrap justify-between gap-3 border-t border-brand-line pt-3"><button type="button" className="text-sm font-semibold text-brand-purple hover:text-brand-orange-dark underline" onClick={() => { sessionStorage.removeItem("careergrill-audit-draft"); setAnswers({ direction: "", experience: "", evidence: "", concerns: "", target: "", timeline: "" }); setFeedback(""); setStep(1); setNotice("This tab’s draft has been cleared."); }}>Clear this tab’s draft</button><Link className="text-sm font-semibold text-brand-purple hover:text-brand-orange-dark underline" href="/faq">Questions about the audit? ↗</Link></div>
+      <div className="flex flex-wrap justify-between gap-3 border-t border-brand-line pt-3"><button type="button" className="text-sm font-semibold text-brand-purple hover:text-brand-orange-dark underline" onClick={() => { sessionStorage.removeItem("careergrill-audit-draft"); setAnswers({ direction: "", experience: "", evidence: "", concerns: "", target: "", timeline: "" }); setFeedback(""); setAuditId(""); setAuditRating(null); setStep(1); setNotice("This tab’s draft has been cleared."); }}>Clear this tab’s draft</button><Link className="text-sm font-semibold text-brand-purple hover:text-brand-orange-dark underline" href="/faq">Questions about the audit? ↗</Link></div>
     </form>
-    {feedback && <section className="rounded border border-brand-line bg-brand-sage p-5 lg:col-start-2"><Eyebrow>Your application direction</Eyebrow><h2 className="my-2 text-2xl">A practical next-step plan.</h2><div className="space-y-2 leading-relaxed text-brand-muted">{feedback.split("\n").map((line, index) => <p className="mb-0" key={index}>{line}</p>)}</div></section>}
+    {feedback && <section className="rounded border border-brand-line bg-brand-sage p-5 lg:col-start-2"><Eyebrow>Your application direction</Eyebrow><h2 className="my-2 text-2xl">A practical next-step plan.</h2><div className="space-y-2 leading-relaxed text-brand-muted">{feedback.split("\n").map((line, index) => <p className="mb-0" key={index}>{line}</p>)}</div>{auditId && <AuditRating key={auditId} auditId={auditId} initialRating={auditRating} />}</section>}
   </Container>;
 }
 

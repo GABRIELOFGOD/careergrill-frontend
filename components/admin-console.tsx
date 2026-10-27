@@ -27,6 +27,21 @@ interface AdminFile {
   created_at: string;
   processing_status: "processing" | "ready" | "failed";
 }
+interface AdminCareerAudit {
+  id: string;
+  goal: string;
+  feedback: string;
+  rating: number | null;
+  created_at: string;
+}
+interface CareerAuditDashboard {
+  totalAudits: number;
+  totalRatings: number;
+  averageRating: number | null;
+  totalUsage: number;
+  todayUsage: number;
+  items: AdminCareerAudit[];
+}
 interface Settings {
   ai_provider: AiProvider;
   ai_model: string;
@@ -81,6 +96,8 @@ const aiProviders: { value: AiProvider; label: string; defaultModel: string }[] 
   { value: "anthropic", label: "Anthropic", defaultModel: "claude-sonnet-4-20250514" },
   { value: "google", label: "Google Gemini", defaultModel: "gemini-2.5-flash" },
 ];
+const careerAuditPromptWordLimit = 10_000;
+const careerAuditPromptCharacterLimit = 100_000;
 const contentTypeBySection: Partial<Record<string, ContentType>> = {
   jobs: "job",
   scholarships: "scholarship",
@@ -277,6 +294,8 @@ export default function AdminConsole() {
   const [contents, setContents] = useState<AdminContent[]>([]);
   const [trashedContents, setTrashedContents] = useState<AdminContent[]>([]);
   const [files, setFiles] = useState<AdminFile[]>([]);
+  const [careerAudits, setCareerAudits] = useState<CareerAuditDashboard | null>(null);
+  const [careerAuditsError, setCareerAuditsError] = useState("");
   const [settings, setSettings] = useState<Settings | null>(null);
   const [draft, setDraft] = useState(emptyDraft);
   const [resourceAttachments, setResourceAttachments] = useState<ResourceAttachment[]>([]);
@@ -430,6 +449,16 @@ export default function AdminConsole() {
     void apiRequest<{ items: AdminContent[] }>("/admin/content/trash")
       .then(({ items }) => setTrashedContents(items))
       .catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Could not load trash."));
+  }, [access, section]);
+
+  useEffect(() => {
+    if (access !== "authorized" || section !== "audits") return;
+    void apiRequest<CareerAuditDashboard>("/admin/audits")
+      .then((result) => {
+        setCareerAudits(result);
+        setCareerAuditsError("");
+      })
+      .catch((error: unknown) => setCareerAuditsError(error instanceof Error ? error.message : "Could not load Career Audit activity."))
   }, [access, section]);
 
   useEffect(() => {
@@ -881,6 +910,7 @@ export default function AdminConsole() {
     ["Services", "/dashboard/services", "services"],
     ["FAQs", "/dashboard/faqs", "faqs"],
     ["Feedback", "/dashboard/feedback", "feedback"],
+    ["Career audits", "/dashboard/audits", "audits"],
     ["All content", "/dashboard/content", "content"],
     ["Trash", "/dashboard/trash", "trash"],
     ["AI studio", "/dashboard/ai", "ai"],
@@ -897,6 +927,7 @@ export default function AdminConsole() {
     services: "Services",
     faqs: "FAQs",
     feedback: "Client feedback",
+    audits: "Career Audit activity",
     ai: "AI writing studio",
     files: "Reference library",
     settings: "Studio settings",
@@ -904,6 +935,7 @@ export default function AdminConsole() {
   const title = sectionTitles[section] ?? "Your studio";
   const sectionContents = contentType ? contents.filter((item) => item.type === contentType) : contents;
   const pricingForm = settingsForm.service_pricing;
+  const careerAuditPromptWords = settingsForm.career_audit_prompt.trim().split(/\s+/).filter(Boolean).length;
   const scholarshipChecks = [
     { label: "Scholarship title", complete: draft.title.trim().length >= 3 },
     { label: "Search filters selected", complete: ["study_level", "destination", "funding_type", "subject_areas", "eligible_countries"].every((key) => selectedFieldValues(draft.data[key]).length > 0) },
@@ -938,6 +970,39 @@ export default function AdminConsole() {
           <p className="mb-0 text-sm">{uploadProgress === 100 ? "Upload received; processing and storing document…" : `Uploading document… ${uploadProgress}%`}</p>
           <progress className="h-2 w-full accent-brand-purple" aria-label="Document upload progress" max={100} value={uploadProgress} />
         </div>}
+        {section === "audits" && <section className="grid gap-4">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">CAREER AUDIT / SERVICE INSIGHTS</span>
+            <h2 className="mb-1 mt-1 text-2xl">Usage, AI responses and ratings</h2>
+            <p className="mb-0 text-sm text-brand-muted">Usage includes all reserved generation attempts, including attempts that did not produce a saved response. The table shows the 100 most recent saved audits.</p>
+          </div>
+          {careerAuditsError && <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">{careerAuditsError}</p>}
+          {!careerAudits && !careerAuditsError && <p className="text-sm text-brand-muted" role="status">Loading Career Audit activity…</p>}
+          {careerAudits && <>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                ["Saved audits", careerAudits.totalAudits, "All generated responses"],
+                ["Attempts today", careerAudits.todayUsage, "Includes failed attempts"],
+                ["All-time attempts", careerAudits.totalUsage, "Reserved generations"],
+                ["Average rating", careerAudits.averageRating === null ? "—" : `${careerAudits.averageRating.toFixed(1)}/5`, `${careerAudits.totalRatings} ratings submitted`],
+              ].map(([label, value, detail]) => <div className="rounded border border-brand-line bg-white p-4" key={label}>
+                <span className="text-sm text-brand-muted">{label}</span>
+                <strong className="my-2 block font-display text-3xl">{value}</strong>
+                <small className="text-xs text-brand-muted">{detail}</small>
+              </div>)}
+            </div>
+            {careerAudits.items.length ? careerAudits.items.map((audit) => <article className="grid gap-3 rounded border border-brand-line bg-white p-5" key={audit.id}>
+              <header className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-line pb-3">
+                <div>
+                  <span className="rounded-full bg-brand-blue px-2.5 py-1 text-xs font-semibold">{audit.goal}</span>
+                  <p className="mb-0 mt-2 text-xs text-brand-muted">{new Date(audit.created_at).toLocaleString()}</p>
+                </div>
+                <span className="rounded bg-brand-sage px-2.5 py-1 text-sm font-semibold text-brand-purple">{audit.rating === null ? "Not rated" : `Rating: ${audit.rating}/5`}</span>
+              </header>
+              <div className="whitespace-pre-wrap text-sm leading-relaxed text-brand-muted">{audit.feedback}</div>
+            </article>) : <p className="rounded border border-brand-line bg-white p-5 text-sm text-brand-muted">No Career Audit responses have been saved yet.</p>}
+          </>}
+        </section>}
         {section === "ai" && aiDraftReady && draft.type === aiType && <section className="grid gap-4 rounded border border-brand-line bg-white p-5">
           <div className="flex items-center justify-between gap-3"><div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">AI CONTENT · REVIEW BEFORE PUBLISHING</span><h2 className="mb-0 mt-1 text-2xl">Preview it as a reader.</h2></div><span className="grid size-10 place-items-center rounded bg-brand-sage text-xl text-brand-purple">✦</span></div>
           <ContentPreview type={aiType} title={draft.title} excerpt={draft.excerpt} body={draft.body} category={draft.category} data={draft.data} sourceUrl={draft.source_url} />
@@ -1195,10 +1260,10 @@ export default function AdminConsole() {
             <div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">CAREER AUDIT INSTRUCTIONS</span><h2 className="mb-0 mt-1 text-2xl">Set the guidance for AI feedback.</h2></div>
             <p className="mb-0 text-sm leading-relaxed text-brand-muted">This additional instruction is combined with the Career Audit’s safety and accuracy rules, then used with the applicant’s answers. Keep applicant answers as the source of their personal facts.</p>
             <label>Administrator pre-prompt
-              <textarea value={settingsForm.career_audit_prompt} onChange={(event) => setSettingsForm((current) => ({ ...current, career_audit_prompt: event.target.value }))} rows={8} maxLength={8000} placeholder="Add guidance on how the AI should assess preparation and shape practical feedback…" />
-              <small className="text-xs font-normal text-brand-muted">{settingsForm.career_audit_prompt.length}/8000 characters</small>
+              <textarea value={settingsForm.career_audit_prompt} onChange={(event) => setSettingsForm((current) => ({ ...current, career_audit_prompt: event.target.value }))} rows={8} maxLength={careerAuditPromptCharacterLimit} placeholder="Add guidance on how the AI should assess preparation and shape practical feedback…" />
+              <small className="text-xs font-normal text-brand-muted">{careerAuditPromptWords.toLocaleString()}/{careerAuditPromptWordLimit.toLocaleString()} words · {settingsForm.career_audit_prompt.length.toLocaleString()}/{careerAuditPromptCharacterLimit.toLocaleString()} characters</small>
             </label>
-            <button className={buttonVariants({ variant: "brand", size: "sm" })} disabled={busy}>{busy ? "Saving…" : "Save Career Audit prompt"}</button>
+            <button className={buttonVariants({ variant: "brand", size: "sm" })} disabled={busy || careerAuditPromptWords > careerAuditPromptWordLimit}>{busy ? "Saving…" : "Save Career Audit prompt"}</button>
           </form>
         </> : null}
         {section === "" ? <section className="grid gap-5"><div className="flex items-center justify-between gap-4 rounded border border-brand-line bg-brand-purple p-6 text-white max-sm:flex-col max-sm:items-start"><div><span className="text-xs font-bold uppercase tracking-widest text-brand-footer-hover">WEDNESDAY · YOUR EDITORIAL OVERVIEW</span><h2 className="mb-1 mt-2 text-3xl text-white">Let’s make something <em>worth keeping.</em></h2><p className="mb-0 text-sm text-brand-footer-muted">Shape the practical next steps your readers are looking for.</p></div><Link href="/dashboard/ai" className={buttonVariants({ variant: "light", size: "sm" })}>✦ Start an AI draft</Link></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[["All content", overview?.contentCount ?? 0, "Across every content type"], ["Published", overview?.publishedCount ?? 0, "Live on your website"], ["Reference files", overview?.documentCount ?? 0, "Available to AI drafts"], ["Members", overview?.userCount ?? 0, "Private workspaces"]].map(([label, count, detail]) => <div className="rounded border border-brand-line bg-white p-4" key={label}><span className="text-sm text-brand-muted">{label}</span><strong className="my-2 block font-display text-3xl">{count}</strong><small className="text-xs text-brand-muted">{detail}</small></div>)}</div><div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(16rem,.8fr)]"><div className="grid content-start gap-3 rounded border border-brand-line bg-white p-5"><div className="flex items-center justify-between gap-3"><div><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">RECENT CONTENT</span><h2 className="mb-0 mt-1 text-2xl">In the studio</h2></div><Link href="/dashboard/content" className="text-sm font-semibold text-brand-purple hover:underline">Open library ↗</Link></div>{contents.slice(0, 5).map((item) => <article className="grid gap-1 border-t border-brand-line pt-3" key={item.id}><div className="flex items-center gap-2 text-xs font-semibold uppercase text-brand-muted"><span className={`size-2 rounded-full ${item.status === "published" ? "bg-green-600" : item.status === "draft" ? "bg-amber-500" : "bg-slate-400"}`} />{item.status} · {item.type}</div><h3 className="mb-0 text-base font-bold">{item.title}</h3></article>)}{!contents.length && <p className="mb-0 text-sm text-brand-muted">Your first useful story can start here.</p>}</div><div className="grid gap-4"><div className="grid gap-2 rounded border border-brand-line bg-white p-5"><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">QUICK START</span><Link className="text-sm font-semibold text-brand-purple hover:underline" href="/dashboard/content">＋ Write manually</Link><Link className="text-sm font-semibold text-brand-purple hover:underline" href="/dashboard/ai">✦ Prompt the AI</Link><Link className="text-sm font-semibold text-brand-purple hover:underline" href="/dashboard/files">↥ Upload a source file</Link></div><div className="grid gap-2 rounded border border-brand-line bg-brand-sage p-5"><span className="text-xs font-bold uppercase tracking-widest text-brand-eyebrow">A NOTE ON TRUST</span><p className="mb-0 text-sm text-brand-muted">AI creates drafts, not facts. Review every detail before you publish.</p><Link className="text-sm font-semibold text-brand-purple hover:underline" href="/privacy">Privacy details ↗</Link></div></div></div></section> : null}
